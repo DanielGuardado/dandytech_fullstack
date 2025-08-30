@@ -44,7 +44,7 @@ class LookupsRepo:
     def list_variant_types(self) -> List[Dict]:
         rows = self.db.execute(
             text("""
-                SELECT variant_type_id, code, display_name
+                SELECT variant_type_id, code, display_name, is_active
                 FROM dbo.VariantTypes
                 WHERE is_active = 1
                 ORDER BY display_name

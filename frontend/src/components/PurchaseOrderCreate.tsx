@@ -62,6 +62,7 @@ const PurchaseOrderCreate: React.FC = () => {
   const [editingLineItemId, setEditingLineItemId] = useState<number | null>(null);
   const [editingLineItemData, setEditingLineItemData] = useState<any>(null);
   
+  
   // Refs for keyboard navigation
   const sourceFieldRef = useRef<HTMLSelectElement>(null);
   

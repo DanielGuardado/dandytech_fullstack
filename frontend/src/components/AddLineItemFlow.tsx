@@ -30,6 +30,7 @@ interface AddLineItemFlowProps {
   currentLineItems: Array<{allocation_basis: number; quantity_expected: number; cost_assignment_method: string}>;
   onAddItem: (item: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number; platform_short_name?: string }, allocation: AllocationDetails) => void;
   onCancel: () => void;
+  defaultVariantMode?: string;
 }
 
 type FlowStep = 'search' | 'create-product' | 'pc-link' | 'select-variant' | 'create-variant';
@@ -40,7 +41,8 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   variantTypes,
   currentLineItems,
   onAddItem,
-  onCancel
+  onCancel,
+  defaultVariantMode
 }) => {
   const [currentStep, setCurrentStep] = useState<FlowStep>('search');
   const [loading, setLoading] = useState(false);
@@ -48,6 +50,19 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
 
   // Flow state
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Default variant mode for auto-highlighting when adding items (internal state)
+  const [internalDefaultVariantMode, setInternalDefaultVariantMode] = useState<string>('NEW');
+  
+  // Set default variant mode when variantTypes loads
+  React.useEffect(() => {
+    if (variantTypes.length > 0 && internalDefaultVariantMode === 'NEW') {
+      const firstActiveVariant = variantTypes.find(vt => vt.is_active);
+      if (firstActiveVariant && firstActiveVariant.code !== 'NEW') {
+        setInternalDefaultVariantMode(firstActiveVariant.code);
+      }
+    }
+  }, [variantTypes, internalDefaultVariantMode]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [newProductData, setNewProductData] = useState<CreateProductRequest | null>(null);
   const [createdProductId, setCreatedProductId] = useState<number | null>(null);
@@ -313,7 +328,38 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
         flexShrink: 0,
         minHeight: '32px'
       }}>
-        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1d1d1f', margin: '0' }}>Add Line Item</h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1d1d1f', margin: '0' }}>Add Line Item</h4>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px',
+            fontSize: '10px',
+            color: '#6c757d'
+          }}>
+            <span>Variant default:</span>
+            <select
+              value={internalDefaultVariantMode}
+              onChange={(e) => setInternalDefaultVariantMode(e.target.value)}
+              style={{
+                padding: '4px 6px',
+                fontSize: '10px',
+                border: '1px solid #6c757d',
+                borderRadius: '3px',
+                background: '#fff',
+                color: '#6c757d',
+                cursor: 'pointer',
+                fontWeight: 'normal'
+              }}
+            >
+              {variantTypes.filter(vt => vt.is_active).map((variantType) => (
+                <option key={variantType.code} value={variantType.code}>
+                  {variantType.display_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         <div className="flow-actions" style={{ display: 'flex', gap: '8px' }}>
           {currentStep !== 'search' && (
             <button 
@@ -410,6 +456,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           currentLineItems={currentLineItems}
           loading={loading}
           showCreateVariant={true}
+          defaultVariantMode={internalDefaultVariantMode}
         />
       )}
 
@@ -422,6 +469,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           currentLineItems={currentLineItems}
           loading={loading}
           showCreateVariant={false}
+          defaultVariantMode={internalDefaultVariantMode}
         />
       )}
 

@@ -16,6 +16,7 @@ interface VariantSelectPanelProps {
   currentLineItems: Array<{allocation_basis: number; quantity_expected: number; cost_assignment_method: string}>;
   loading: boolean;
   showCreateVariant: boolean;
+  defaultVariantMode?: string;
 }
 
 const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
@@ -25,7 +26,8 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
   onCreateVariant,
   currentLineItems,
   loading,
-  showCreateVariant
+  showCreateVariant,
+  defaultVariantMode
 }) => {
   // For creating new variants
   const [createMode, setCreateMode] = useState(showCreateVariant);
@@ -59,13 +61,24 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
     }
   }, [selectedVariant, allocationMethod, useCustomValue]);
 
-  // Reset selected variant index when variants change
+  // Reset selected variant index when variants change, with auto-highlight based on defaultVariantMode
   useEffect(() => {
     console.log('VariantSelectPanel - availableVariants changed:', availableVariants.length, 'variants');
-    setSelectedVariantIndex(0);
+    
+    if (availableVariants.length > 0 && defaultVariantMode) {
+      // Find variant matching the default mode
+      const modeIndex = availableVariants.findIndex(
+        variant => variant.variant_type_code === defaultVariantMode
+      );
+      console.log('VariantSelectPanel - Looking for variant with code:', defaultVariantMode, 'found at index:', modeIndex);
+      setSelectedVariantIndex(modeIndex >= 0 ? modeIndex : 0);
+    } else {
+      setSelectedVariantIndex(0);
+    }
+    
     // Ensure no variant is auto-selected - only highlighted
     setSelectedVariant(null);
-  }, [availableVariants]);
+  }, [availableVariants, defaultVariantMode]);
 
   // Keyboard navigation for variant selection (only when no variant is selected)
   useEffect(() => {
