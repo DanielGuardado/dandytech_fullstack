@@ -89,7 +89,7 @@ class CatalogRepo:
             rows = self.db.execute(
                 text("""
                     SELECT cp.catalog_product_id, cp.title, cp.category_id, c.name AS category_name,
-                           b.name AS brand, cp.upc,
+                           b.name AS brand, cp.upc, cp.pricecharting_id,
                            g.platform_id, p.name AS platform_name, p.short_name
                     FROM dbo.CatalogProducts cp
                     JOIN dbo.Categories c ON c.category_id = cp.category_id
@@ -108,7 +108,7 @@ class CatalogRepo:
             text("""
                 ;WITH base AS (
                   SELECT cp.catalog_product_id, cp.title, cp.category_id, c.name AS category_name,
-                         b.name AS brand, cp.upc, g.platform_id, p.name AS platform_name, p.short_name,
+                         b.name AS brand, cp.upc, cp.pricecharting_id, g.platform_id, p.name AS platform_name, p.short_name,
                          CASE WHEN cp.title LIKE :q + '%' THEN 100 ELSE 0 END +
                          CASE WHEN cp.title LIKE '%' + :q + '%' THEN 20 ELSE 0 END +
                          CASE WHEN (:pid IS NOT NULL AND g.platform_id = :pid) THEN 50 ELSE 0 END
@@ -123,7 +123,7 @@ class CatalogRepo:
                     AND (:q = '' OR cp.title LIKE '%' + :q + '%')
                 )
                 SELECT catalog_product_id, title, category_id, category_name,
-                       brand, upc, platform_id, platform_name, short_name
+                       brand, upc, pricecharting_id, platform_id, platform_name, short_name
                 FROM base
                 ORDER BY score DESC, title ASC, catalog_product_id ASC
                 OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
@@ -138,7 +138,7 @@ class CatalogRepo:
         rows = self.db.execute(
             text(f"""
                 SELECT v.variant_id, v.catalog_product_id, v.variant_type_id, vt.code AS variant_type_code,
-                       vt.display_name, v.current_market_value, v.default_list_price
+                       vt.display_name, v.current_market_value, v.default_list_price, v.updated_at
                 FROM dbo.ListingVariants v
                 JOIN dbo.VariantTypes vt ON vt.variant_type_id = v.variant_type_id
                 WHERE v.is_active = 1 AND v.catalog_product_id IN ({",".join(str(i) for i in product_ids)})
@@ -481,3 +481,22 @@ class CatalogRepo:
         ).mappings().fetchone()
         
         return dict(row) if row else None
+    
+    def get_stale_products_with_pc_id(self, product_ids: List[int], days: int = 3) -> List[Dict]:
+        """Get products that have pricecharting_id and stale variants (updated > X days ago)"""
+        if not product_ids:
+            return []
+        
+        rows = self.db.execute(
+            text(f"""
+                SELECT DISTINCT cp.catalog_product_id, cp.pricecharting_id
+                FROM dbo.CatalogProducts cp
+                JOIN dbo.ListingVariants v ON v.catalog_product_id = cp.catalog_product_id
+                WHERE cp.catalog_product_id IN ({",".join(str(i) for i in product_ids)})
+                  AND cp.pricecharting_id IS NOT NULL
+                  AND v.is_active = 1
+                  AND v.updated_at < DATEADD(day, -{days}, SYSDATETIME())
+            """)
+        ).mappings().all()
+        
+        return [dict(r) for r in rows]

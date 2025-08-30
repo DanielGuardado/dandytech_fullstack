@@ -92,6 +92,21 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
     };
 
     onAddItem(lineItem, allocationData);
+    
+    // Reset flow back to search for continuous item addition
+    resetFlow();
+  };
+  
+  const resetFlow = () => {
+    setCurrentStep('search');
+    setSearchQuery('');
+    setSelectedProduct(null);
+    setNewProductData(null);
+    setCreatedProductId(null);
+    setPriceChartingResults([]);
+    setAvailableVariants([]);
+    setPlatformHintId(null);
+    setError(null);
   };
 
 

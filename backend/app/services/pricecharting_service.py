@@ -383,3 +383,45 @@ class PriceChartingService:
         }
         
         return short_mappings.get(platform_name, platform_name[:10])
+    
+    def refresh_market_values(self, catalog_product_id: int) -> bool:
+        """Refresh market values for a product from PriceCharting"""
+        try:
+            # Get product context to get the pricecharting_id
+            ctx = self.repo.get_product_context(catalog_product_id)
+            pricecharting_id = ctx.get("pricecharting_id")
+            
+            if not pricecharting_id:
+                return False
+            
+            # Fetch latest data from PriceCharting
+            pc_product = self.pc.get_pricecharting_product_by_id(pricecharting_id)
+            pc_product = pc_product.get("products", [])[0] if pc_product and isinstance(pc_product.get("products"), list) and len(pc_product["products"]) > 0 else None
+            if not pc_product:
+                return False
+            
+            # Extract pricing data for variants
+            values = {}
+            if pc_product.get("loose-price"):
+                values["LOOSE"] = convert_number_to_price(pc_product["loose-price"])
+            if pc_product.get("cib-price"):
+                values["CIB"] = convert_number_to_price(pc_product["cib-price"])
+            if pc_product.get("new-price"):
+                values["NEW"] = convert_number_to_price(pc_product["new-price"])
+            
+            # Update variant market values
+            for vt_code, value in values.items():
+                if value is not None:
+                    # This will update existing variants or skip if not found
+                    existing_variant = self.repo.find_active_variant(
+                        catalog_product_id, 
+                        self.repo.variant_type_id_by_code(vt_code)
+                    )
+                    if existing_variant:
+                        self.repo.update_variant_market_value(existing_variant, value)
+            
+            return True
+            
+        except Exception as e:
+            print(f"Failed to refresh market values for product {catalog_product_id}: {e}")
+            return False

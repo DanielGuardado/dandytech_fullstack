@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Category, Platform, CreateProductRequest, Brand } from '../types/api';
 import { catalogService } from '../services/catalogService';
 
@@ -168,8 +168,8 @@ const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = useCallback((e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     
     // Clean up title (titleize)
     const titleizedTitle = formData.title
@@ -187,7 +187,7 @@ const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
     };
 
     onProductCreated(cleanedData);
-  };
+  }, [formData, onProductCreated]);
 
   const selectedCategory = categories.find(c => c.category_id === formData.category_id);
   const isVideoGame = selectedCategory?.name === 'Video Game';
@@ -197,6 +197,23 @@ const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
     formData.title.trim() && 
     (!isVideoGame || formData.game?.platform_id) &&
     (!isConsole || formData.console?.model_number);
+
+  // Global Enter key handler for form submission when valid
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && canSubmit && !loading) {
+        // Check if we're not focused on a textarea or similar element that needs Enter
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          handleSubmit();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [canSubmit, loading, handleSubmit]);
 
   return (
     <div className="create-product-panel">

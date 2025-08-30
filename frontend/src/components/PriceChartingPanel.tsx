@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PriceChartingResult } from '../types/api';
 
 interface PriceChartingPanelProps {
@@ -22,6 +22,8 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState(productTitle);
   const [hasSearched, setHasSearched] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const resultListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Auto-search on mount if we have UPC or title
@@ -29,6 +31,43 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
       handleSearch();
     }
   }, [upc, productTitle, hasSearched]);
+
+  // Reset selected index when results change
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [results]);
+
+  // Add keyboard event listener for navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!hasSearched || results.length === 0) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex(prev => (prev + 1) % results.length);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex(prev => prev === 0 ? results.length - 1 : prev - 1);
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (results[selectedIndex]) {
+            onLink(results[selectedIndex].id);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          onSkip();
+          break;
+      }
+    };
+
+    // Add event listener to the document
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [hasSearched, results, selectedIndex, onLink, onSkip]);
 
   const handleSearch = () => {
     onSearch(searchQuery, upc);
@@ -109,12 +148,13 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
                 </div>
               </div>
 
-              <div className="pc-results-list">
+              <div className="pc-results-list" ref={resultListRef}>
                 {results.map((result, index) => (
                   <div 
                     key={index}
-                    className="pc-result-item"
+                    className={`pc-result-item ${index === selectedIndex ? 'selected' : ''}`}
                     onClick={() => onLink(result.id)}
+                    onMouseEnter={() => setSelectedIndex(index)}
                   >
                     <div className="pc-result-info">
                       <div className="pc-result-title">{result.title}</div>
@@ -122,7 +162,9 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
                       <div className="pc-result-id">ID: {result.id}</div>
                     </div>
 
-                    <div className="select-arrow">→</div>
+                    <div className="select-arrow">
+                      {index === selectedIndex ? '→' : ''}
+                    </div>
                   </div>
                 ))}
               </div>

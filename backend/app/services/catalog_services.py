@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.core.errors import AppError
 from app.repositories.catalog_repo import CatalogRepo
+from app.services.pricecharting_service import PriceChartingService
 
 
 # Common short platform tokens we’ll try first client-side and also server-side
@@ -36,6 +37,7 @@ class CatalogService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = CatalogRepo(db)
+        self.pc_service = PriceChartingService(db)
 
     # ---------- GET /catalog/search
     def search(self, *, q: Optional[str], upc: Optional[str],
@@ -58,6 +60,16 @@ class CatalogService:
         rows = self.repo.search_catalog_page(q_text=q_text, upc=upc, category_id=category_id,
                                              platform_id=final_platform_id, limit=limit, offset=offset)
         product_ids = [r["catalog_product_id"] for r in rows]
+        
+        # Check for stale products and refresh their market values
+        stale_products = self.repo.get_stale_products_with_pc_id(product_ids)
+        if stale_products:
+            for stale_product in stale_products:
+                self.pc_service.refresh_market_values(stale_product["catalog_product_id"])
+            # Commit the price updates
+            self.db.commit()
+        
+        # Get variants (potentially refreshed)
         variants_by_product = self.repo.variants_for_products(product_ids)
 
         items = []

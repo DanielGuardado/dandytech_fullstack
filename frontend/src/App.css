@@ -1332,7 +1332,8 @@ body {
   transition: all 0.15s ease-in-out;
 }
 
-.search-result-item:hover {
+.search-result-item:hover,
+.search-result-item.selected {
   border-color: #007aff;
   background: rgba(0, 122, 255, 0.02);
 }
@@ -1535,7 +1536,8 @@ body {
   transition: all 0.15s ease-in-out;
 }
 
-.pc-result-item:hover {
+.pc-result-item:hover,
+.pc-result-item.selected {
   border-color: #007aff;
   background: rgba(0, 122, 255, 0.02);
 }

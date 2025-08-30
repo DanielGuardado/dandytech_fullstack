@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ProductVariant, VariantType } from '../types/api';
 
 interface AllocationDetails {
@@ -38,13 +38,63 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
   const [allocationBasis, setAllocationBasis] = useState<string>('');
   const [useCustomValue, setUseCustomValue] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  
+  // Keyboard navigation state
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+  const variantListRef = useRef<HTMLDivElement>(null);
+  const allocationInputRef = useRef<HTMLInputElement>(null);
+  const addToOrderButtonRef = useRef<HTMLButtonElement>(null);
 
   // Initialize allocation basis when variant changes
   useEffect(() => {
     if (selectedVariant?.current_market_value && allocationMethod === 'by_market_value' && !useCustomValue) {
       setAllocationBasis(selectedVariant.current_market_value.toString());
+      
+      // Auto-focus Add to Order button when form becomes valid with prefilled values
+      setTimeout(() => {
+        if (addToOrderButtonRef.current) {
+          addToOrderButtonRef.current.focus();
+        }
+      }, 200); // Small delay to ensure form validation has updated
     }
   }, [selectedVariant, allocationMethod, useCustomValue]);
+
+  // Reset selected variant index when variants change
+  useEffect(() => {
+    console.log('VariantSelectPanel - availableVariants changed:', availableVariants.length, 'variants');
+    setSelectedVariantIndex(0);
+    // Ensure no variant is auto-selected - only highlighted
+    setSelectedVariant(null);
+  }, [availableVariants]);
+
+  // Keyboard navigation for variant selection (only when no variant is selected)
+  useEffect(() => {
+    if (selectedVariant) return; // Only handle keyboard navigation when selecting variants
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (availableVariants.length === 0) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedVariantIndex(prev => (prev + 1) % availableVariants.length);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedVariantIndex(prev => prev === 0 ? availableVariants.length - 1 : prev - 1);
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (availableVariants[selectedVariantIndex]) {
+            handleVariantSelect(availableVariants[selectedVariantIndex]);
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedVariant, availableVariants, selectedVariantIndex]);
 
   const handleVariantSelect = (variant: ProductVariant) => {
     console.log('Variant selected:', variant);
@@ -54,6 +104,11 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
     setAllocationMethod('by_market_value');
     setUseCustomValue(false);
     setQuantity(1);
+    
+    // Auto-focus the allocation input after variant selection
+    setTimeout(() => {
+      allocationInputRef.current?.focus();
+    }, 100);
   };
 
 
@@ -68,17 +123,17 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
     return price ? `$${price.toFixed(2)}` : 'No price';
   };
 
-  const getValueSource = (): string => {
+  const getValueSource = useCallback((): string => {
     if (allocationMethod === 'manual') return 'other';
     if (useCustomValue) return 'other';
     return selectedVariant?.current_market_value ? 'pricecharting' : 'other';
-  };
+  }, [allocationMethod, useCustomValue, selectedVariant]);
 
   const isFormValid = useMemo(() => {
     return selectedVariant && allocationBasis !== '' && !isNaN(parseFloat(allocationBasis)) && parseFloat(allocationBasis) > 0 && quantity >= 1;
   }, [selectedVariant, allocationBasis, quantity]);
 
-  const handleAddToOrder = () => {
+  const handleAddToOrder = useCallback(() => {
     if (!selectedVariant || !isFormValid) return;
 
     const allocation: AllocationDetails = {
@@ -89,7 +144,22 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
     };
 
     onVariantSelected(selectedVariant, allocation);
-  };
+  }, [selectedVariant, isFormValid, allocationBasis, allocationMethod, quantity, onVariantSelected, getValueSource]);
+
+  // Keyboard support for submitting the allocation form
+  useEffect(() => {
+    if (!selectedVariant) return; // Only when in allocation mode
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && isFormValid) {
+        e.preventDefault();
+        handleAddToOrder();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedVariant, isFormValid, handleAddToOrder]);
 
   return (
     <div className="variant-select-panel">
@@ -123,12 +193,13 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
           {availableVariants.length > 0 && (
             <div className="existing-variants">
               <h5>Available Variants</h5>
-              <div className="variants-list">
-                {availableVariants.map((variant) => (
+              <div className="variants-list" ref={variantListRef}>
+                {availableVariants.map((variant, index) => (
                   <div 
                     key={variant.variant_id}
-                    className="variant-item"
+                    className={`variant-item ${index === selectedVariantIndex ? 'selected' : ''}`}
                     onClick={() => handleVariantSelect(variant)}
+                    onMouseEnter={() => setSelectedVariantIndex(index)}
                   >
                     <div className="variant-info">
                       <div className="variant-name">{variant.display_name || `${variant.variant_type_code || 'Unknown'} Variant`}</div>
@@ -138,7 +209,7 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
                       {formatPrice(variant.current_market_value || variant.default_list_price)}
                     </div>
                     <div className="variant-select-indicator">
-                      ○
+                      {index === selectedVariantIndex ? '→' : '○'}
                     </div>
                   </div>
                 ))}
@@ -303,6 +374,7 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
               {allocationMethod === 'manual' ? 'Unit Cost Paid ($)' : 'Market Value ($)'}
             </label>
             <input
+              ref={allocationInputRef}
               type="number"
               value={allocationBasis}
               onChange={(e) => setAllocationBasis(e.target.value)}
@@ -368,6 +440,7 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
 
           {/* Add to Order Button */}
           <button
+            ref={addToOrderButtonRef}
             onClick={handleAddToOrder}
             disabled={!isFormValid}
             style={{

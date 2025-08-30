@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiService } from '../services/api';
 import { catalogService } from '../services/catalogService';
 import { 
@@ -60,6 +60,9 @@ const PurchaseOrderCreate: React.FC = () => {
   // Line item editing state
   const [editingLineItemId, setEditingLineItemId] = useState<number | null>(null);
   const [editingLineItemData, setEditingLineItemData] = useState<any>(null);
+  
+  // Refs for keyboard navigation
+  const sourceFieldRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     const loadLookups = async () => {
@@ -167,6 +170,11 @@ const PurchaseOrderCreate: React.FC = () => {
       setLineItems([]);
       setHasUnsavedChanges(false);
       setIsEditingHeader(false);
+      
+      // Auto-focus the source field for new PO creation
+      setTimeout(() => {
+        sourceFieldRef.current?.focus();
+      }, 100);
     }
   };
 
@@ -219,6 +227,11 @@ const PurchaseOrderCreate: React.FC = () => {
       setSuccess(result);
       setOriginalFormData({ ...formData }); // Store original data for comparison
       setHasUnsavedChanges(false);
+      
+      // Auto-open Add Line Item flow after PO creation
+      setTimeout(() => {
+        setShowAddItemFlow(true);
+      }, 100);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create purchase order');
     } finally {
@@ -259,7 +272,7 @@ const PurchaseOrderCreate: React.FC = () => {
       };
 
       setLineItems(prev => [...prev, itemWithDetails]);
-      setShowAddItemFlow(false);
+      // Keep the AddLineItemFlow open for continuous item addition - it will reset to search automatically
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add line item');
     }
@@ -802,6 +815,7 @@ const PurchaseOrderCreate: React.FC = () => {
                     Source *
                   </label>
                   <select
+                    ref={sourceFieldRef}
                     id="source_id"
                     name="source_id"
                     value={formData.source_id}

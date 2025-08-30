@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Product } from '../types/api';
 import { catalogService } from '../services/catalogService';
 
@@ -15,6 +15,7 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   const searchProducts = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -44,13 +45,35 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
     return () => clearTimeout(timeoutId);
   }, [query, searchProducts]);
 
+  // Auto-select first result when results change
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [results]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // If Enter is pressed and there are no results (but there is a query), create new product
-    if (e.key === 'Enter' && query.trim() && !loading && results.length === 0 && !error) {
+    if (results.length > 0) {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex(prev => (prev + 1) % results.length);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex(prev => prev === 0 ? results.length - 1 : prev - 1);
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (results[selectedIndex]) {
+            onProductSelected(results[selectedIndex]);
+          }
+          break;
+      }
+    } else if (e.key === 'Enter' && query.trim() && !loading && !error) {
+      // If Enter is pressed and there are no results (but there is a query), create new product
       handleCreateNew();
     }
   };
@@ -112,11 +135,12 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
           </div>
         )}
 
-        {results.map((product) => (
+        {results.map((product, index) => (
           <div 
             key={product.catalog_product_id}
-            className="search-result-item"
+            className={`search-result-item ${index === selectedIndex ? 'selected' : ''}`}
             onClick={() => onProductSelected(product)}
+            onMouseEnter={() => setSelectedIndex(index)}
           >
             <div className="product-info">
               <div className="product-title">{product.title}</div>
@@ -137,7 +161,9 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
                 )}
               </div>
             </div>
-            <div className="select-arrow">→</div>
+            <div className="select-arrow">
+              {index === selectedIndex ? '→' : ''}
+            </div>
           </div>
         ))}
       </div>
