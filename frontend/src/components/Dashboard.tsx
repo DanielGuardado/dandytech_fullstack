@@ -42,9 +42,17 @@ const Dashboard: React.FC = () => {
 
   const quickActions: QuickAction[] = [
     { 
+      id: 'calculator', 
+      label: 'Purchase Calculator', 
+      shortcut: 'Ctrl+1', 
+      icon: '🧮', 
+      action: () => navigate('/calculator'), 
+      description: 'Calculate purchase prices with profit margins'
+    },
+    { 
       id: 'create-po', 
       label: 'Create Purchase Order', 
-      shortcut: 'Ctrl+1', 
+      shortcut: 'Ctrl+2', 
       icon: '📦', 
       action: () => navigate('/purchase-orders/create'), 
       count: stats.openPOs,
@@ -53,7 +61,7 @@ const Dashboard: React.FC = () => {
     { 
       id: 'receiving', 
       label: 'Process Receiving', 
-      shortcut: 'Ctrl+2', 
+      shortcut: 'Ctrl+3', 
       icon: '📥', 
       action: () => navigate('/receiving'), 
       count: stats.pendingReceive, 
@@ -63,7 +71,7 @@ const Dashboard: React.FC = () => {
     { 
       id: 'inventory', 
       label: 'Manage Inventory', 
-      shortcut: 'Ctrl+3', 
+      shortcut: 'Ctrl+4', 
       icon: '📋', 
       action: () => navigate('/inventory'), 
       count: stats.activeListings,
@@ -72,7 +80,7 @@ const Dashboard: React.FC = () => {
     { 
       id: 'analytics', 
       label: 'View Analytics', 
-      shortcut: 'Ctrl+4', 
+      shortcut: 'Ctrl+5', 
       icon: '📊', 
       action: () => navigate('/analytics'),
       description: 'Sales performance and metrics'
@@ -80,7 +88,7 @@ const Dashboard: React.FC = () => {
     { 
       id: 'catalog', 
       label: 'Search Catalog', 
-      shortcut: 'Ctrl+5', 
+      shortcut: 'Ctrl+6', 
       icon: '🔍', 
       action: () => navigate('/catalog'),
       description: 'Find and manage product catalog'
@@ -88,7 +96,7 @@ const Dashboard: React.FC = () => {
     { 
       id: 'settings', 
       label: 'System Settings', 
-      shortcut: 'Ctrl+6', 
+      shortcut: 'Ctrl+7', 
       icon: '⚙️', 
       action: () => navigate('/settings'),
       description: 'Configure sources and preferences'

@@ -30,7 +30,7 @@ class CalculatorSessionCreate(BaseModel):
 class CalculatorSessionUpdate(BaseModel):
     session_name: Optional[str] = None
     source_id: Optional[int] = None
-    status: Optional[str] = Field(None, regex="^(draft|finalized|converted_to_po)$")
+    status: Optional[str] = Field(None, pattern="^(draft|finalized|converted_to_po)$")
 
 class CalculatorSession(BaseModel):
     session_id: int

@@ -8,6 +8,7 @@ import PurchaseOrderList from './components/PurchaseOrderList';
 import PurchaseOrderDetail from './components/PurchaseOrderDetail';
 import Receiving from './components/Receiving';
 import Inventory from './components/Inventory';
+import PurchaseCalculator from './components/PurchaseCalculator';
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
           <Route path="/receiving/:id" element={<Receiving />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/inventory/po/:poId" element={<Inventory />} />
+          <Route path="/calculator" element={<PurchaseCalculator />} />
         </Routes>
       </Layout>
     </Router>

@@ -22,6 +22,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     if (location.pathname.startsWith('/receiving/')) return 'Receiving';
     if (location.pathname === '/inventory') return 'Inventory Management';
     if (location.pathname.startsWith('/inventory/')) return 'Inventory';
+    if (location.pathname === '/calculator') return 'Purchase Calculator';
     return '';
   };
 

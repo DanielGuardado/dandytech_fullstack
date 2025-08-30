@@ -57,6 +57,7 @@ export interface Platform {
   category_id: number;
   brand_id?: number;
   is_active: boolean;
+  default_markup?: number;
 }
 
 export interface Brand {
