@@ -9,7 +9,7 @@ from app.integrations.pricecharting_client import PriceChartingClient
 
 BUCKET_BY_VT = {
     "LOOSE": "loose-price",
-    "ORIGINAL_PACKAGING": "cib-price",  # aka CIB
+    "CIB": "cib-price",  # aka CIB
     "NEW": "new-price",
 }
 
@@ -193,7 +193,7 @@ class PriceChartingService:
             # Upsert variants (create if missing; update current_market_value including NULLs)
             linked_variants = []
             if create_variants:
-                for vt_code in ("LOOSE", "ORIGINAL_PACKAGING", "NEW"):
+                for vt_code in ("LOOSE", "CIB", "NEW"):
                     v = self.repo.upsert_variant_and_value(
                         catalog_product_id=catalog_product_id,
                         vt_code=vt_code,
