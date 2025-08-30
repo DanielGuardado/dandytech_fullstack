@@ -64,6 +64,9 @@ const PurchaseOrderCreate: React.FC = () => {
   
   // Refs for keyboard navigation
   const sourceFieldRef = useRef<HTMLSelectElement>(null);
+  
+  // Ref for line items table container to enable auto-scroll
+  const lineItemsTableRef = useRef<HTMLDivElement>(null);
 
   // Helper function for consistent focus styling
   const addFocusHandlers = () => ({
@@ -302,6 +305,14 @@ const PurchaseOrderCreate: React.FC = () => {
       };
 
       setLineItems(prev => [...prev, itemWithDetails]);
+      
+      // Auto-scroll to bottom of table to show the newly added item
+      setTimeout(() => {
+        if (lineItemsTableRef.current) {
+          lineItemsTableRef.current.scrollTop = lineItemsTableRef.current.scrollHeight;
+        }
+      }, 100); // Small delay to ensure DOM is updated
+      
       // Keep the AddLineItemFlow open for continuous item addition - it will reset to search automatically
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add line item');
@@ -565,7 +576,7 @@ const PurchaseOrderCreate: React.FC = () => {
         height: '28px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#495057' }}>
+          <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#495057' }}>
             {poId ? 'Edit PO' : 'Create PO'}
           </span>
           
@@ -748,7 +759,7 @@ const PurchaseOrderCreate: React.FC = () => {
             flexShrink: 0,
             minHeight: '32px'
           }}>
-            <h3 style={{ margin: 0, fontSize: '12px', fontWeight: 'bold' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#1d1d1f' }}>
               Order Details
             </h3>
             
@@ -837,12 +848,12 @@ const PurchaseOrderCreate: React.FC = () => {
             overflow: 'auto',
             minHeight: 0 // Allow flex shrinking
           }}>
-            <form onSubmit={(e) => { e.preventDefault(); handleCreatePO(); }} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <form onSubmit={(e) => { e.preventDefault(); handleCreatePO(); }} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               
               {/* Source and Date */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#6c757d', marginBottom: '3px', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
                     Source *
                   </label>
                   <select
@@ -855,10 +866,10 @@ const PurchaseOrderCreate: React.FC = () => {
                     disabled={!!poId} // Source cannot be changed after creation
                     style={{
                       width: '100%',
-                      padding: '6px 8px',
+                      padding: '8px 10px',
                       border: '1px solid #dee2e6',
-                      borderRadius: '3px',
-                      fontSize: '12px',
+                      borderRadius: '4px',
+                      fontSize: '14px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
                       color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529',
                       transition: 'all 0.15s ease-in-out',
@@ -875,7 +886,7 @@ const PurchaseOrderCreate: React.FC = () => {
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#6c757d', marginBottom: '3px', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
                     Date Purchased
                   </label>
                   <input
@@ -887,10 +898,10 @@ const PurchaseOrderCreate: React.FC = () => {
                     disabled={!!poId && !isEditingHeader && !hasUnsavedChanges}
                     style={{
                       width: '100%',
-                      padding: '6px 8px',
+                      padding: '8px 10px',
                       border: '1px solid #dee2e6',
-                      borderRadius: '3px',
-                      fontSize: '12px',
+                      borderRadius: '4px',
+                      fontSize: '14px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
                       color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529'
                     }}
@@ -899,9 +910,9 @@ const PurchaseOrderCreate: React.FC = () => {
               </div>
 
               {/* Payment Method and External Order */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#6c757d', marginBottom: '3px', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
                     Payment Method
                   </label>
                   <select
@@ -912,10 +923,10 @@ const PurchaseOrderCreate: React.FC = () => {
                     disabled={!!poId && !isEditingHeader && !hasUnsavedChanges}
                     style={{
                       width: '100%',
-                      padding: '6px 8px',
+                      padding: '8px 10px',
                       border: '1px solid #dee2e6',
-                      borderRadius: '3px',
-                      fontSize: '12px',
+                      borderRadius: '4px',
+                      fontSize: '14px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
                       color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529'
                     }}
@@ -930,7 +941,7 @@ const PurchaseOrderCreate: React.FC = () => {
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#6c757d', marginBottom: '3px', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
                     External Order #
                   </label>
                   <input
@@ -943,10 +954,10 @@ const PurchaseOrderCreate: React.FC = () => {
                     disabled={!!poId && !isEditingHeader && !hasUnsavedChanges}
                     style={{
                       width: '100%',
-                      padding: '6px 8px',
+                      padding: '8px 10px',
                       border: '1px solid #dee2e6',
-                      borderRadius: '3px',
-                      fontSize: '12px',
+                      borderRadius: '4px',
+                      fontSize: '14px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
                       color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529'
                     }}
@@ -955,9 +966,9 @@ const PurchaseOrderCreate: React.FC = () => {
               </div>
 
               {/* Financial Details */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#6c757d', marginBottom: '3px', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
                     Subtotal ($)
                   </label>
                   <input
@@ -971,10 +982,10 @@ const PurchaseOrderCreate: React.FC = () => {
                     disabled={!!poId && !isEditingHeader && !hasUnsavedChanges}
                     style={{
                       width: '100%',
-                      padding: '6px 8px',
+                      padding: '8px 10px',
                       border: '1px solid #dee2e6',
-                      borderRadius: '3px',
-                      fontSize: '12px',
+                      borderRadius: '4px',
+                      fontSize: '14px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
                       color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529',
                       fontFamily: 'monospace',
@@ -986,7 +997,7 @@ const PurchaseOrderCreate: React.FC = () => {
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#6c757d', marginBottom: '3px', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
                     Tax ($)
                   </label>
                   <input
@@ -1000,10 +1011,10 @@ const PurchaseOrderCreate: React.FC = () => {
                     disabled={!!poId && !isEditingHeader && !hasUnsavedChanges}
                     style={{
                       width: '100%',
-                      padding: '6px 8px',
+                      padding: '8px 10px',
                       border: '1px solid #dee2e6',
-                      borderRadius: '3px',
-                      fontSize: '12px',
+                      borderRadius: '4px',
+                      fontSize: '14px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
                       color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529',
                       fontFamily: 'monospace',
@@ -1015,9 +1026,9 @@ const PurchaseOrderCreate: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#6c757d', marginBottom: '3px', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
                     Shipping ($)
                   </label>
                   <input
@@ -1031,10 +1042,10 @@ const PurchaseOrderCreate: React.FC = () => {
                     disabled={!!poId && !isEditingHeader && !hasUnsavedChanges}
                     style={{
                       width: '100%',
-                      padding: '6px 8px',
+                      padding: '8px 10px',
                       border: '1px solid #dee2e6',
-                      borderRadius: '3px',
-                      fontSize: '12px',
+                      borderRadius: '4px',
+                      fontSize: '14px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
                       color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529',
                       fontFamily: 'monospace'
@@ -1043,7 +1054,7 @@ const PurchaseOrderCreate: React.FC = () => {
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#6c757d', marginBottom: '3px', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
                     Fees ($)
                   </label>
                   <input
@@ -1057,10 +1068,10 @@ const PurchaseOrderCreate: React.FC = () => {
                     disabled={!!poId && !isEditingHeader && !hasUnsavedChanges}
                     style={{
                       width: '100%',
-                      padding: '6px 8px',
+                      padding: '8px 10px',
                       border: '1px solid #dee2e6',
-                      borderRadius: '3px',
-                      fontSize: '12px',
+                      borderRadius: '4px',
+                      fontSize: '14px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
                       color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529',
                       fontFamily: 'monospace'
@@ -1123,15 +1134,15 @@ const PurchaseOrderCreate: React.FC = () => {
               {/* Compact Total Display */}
               <div style={{
                 background: '#f8f9fa',
-                padding: '8px 12px',
+                padding: '12px 16px',
                 borderRadius: '4px',
                 border: '1px solid #dee2e6',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: '9px', color: '#6c757d', textTransform: 'uppercase', marginBottom: '2px' }}>
+                <div style={{ fontSize: '11px', color: '#6c757d', textTransform: 'uppercase', marginBottom: '4px' }}>
                   Header Total
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#28a745', fontFamily: 'monospace' }}>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#28a745', fontFamily: 'monospace' }}>
                   ${totalCost.toFixed(2)}
                 </div>
               </div>
@@ -1141,12 +1152,12 @@ const PurchaseOrderCreate: React.FC = () => {
                   type="submit"
                   disabled={loading || formData.source_id === 0}
                   style={{
-                    padding: '8px 16px',
+                    padding: '10px 18px',
                     background: loading || formData.source_id === 0 ? '#6c757d' : '#007bff',
                     color: 'white',
                     border: 'none',
-                    borderRadius: '3px',
-                    fontSize: '11px',
+                    borderRadius: '4px',
+                    fontSize: '13px',
                     fontWeight: 'bold',
                     cursor: loading || formData.source_id === 0 ? 'not-allowed' : 'pointer',
                     display: 'flex',
@@ -1184,10 +1195,10 @@ const PurchaseOrderCreate: React.FC = () => {
             flexShrink: 0
           }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#1d1d1f' }}>
                 Line Items
               </h3>
-              <div style={{ fontSize: '10px', color: '#6c757d', marginTop: '1px' }}>
+              <div style={{ fontSize: '12px', color: '#6c757d', marginTop: '2px' }}>
                 {lineItems.length} {lineItems.length === 1 ? 'item' : 'items'} | 
                 Total: ${lineItemsTotal.toFixed(2)}
                 {lineItems.length > 0 && (() => {
@@ -1271,45 +1282,47 @@ const PurchaseOrderCreate: React.FC = () => {
             )}
           </div>
 
-          <div style={{ flex: 1, overflow: 'auto' }}>
+          <div ref={lineItemsTableRef} style={{ flex: 1, overflow: 'auto' }}>
             {lineItems.length > 0 ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
                   <tr style={{ background: '#f8f9fa', borderBottom: '1px solid #dee2e6' }}>
-                    <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Product</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Variant</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Qty</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Product</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Variant</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Qty</th>
                     {success?.is_locked ? (
                       <>
-                        <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Market Value</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Final Cost</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Market Value</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Final Cost</th>
                       </>
                     ) : (
                       <>
-                        <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Cost Basis</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Est. Unit Cost</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Cost Basis</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Est. Unit Cost</th>
                       </>
                     )}
-                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Source</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>% Allocated</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Total</th>
-                    {!success?.is_locked && <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Action</th>}
+                    <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Source</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>% Allocated</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Total</th>
+                    {!success?.is_locked && <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Action</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {lineItems.map((item, index) => (
                     <tr key={item.purchase_order_item_id} style={{ 
                       borderBottom: '1px solid #e9ecef',
-                      backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa'
-                    }}>
-                      <td style={{ padding: '6px 8px', fontWeight: '500', fontSize: '11px' }}>
+                      backgroundColor: index % 2 === 0 ? '#fff' : '#f9f9f9'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e3f2fd'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index % 2 === 0 ? '#fff' : '#f9f9f9'}>
+                      <td style={{ padding: '8px 10px', fontWeight: '500', fontSize: '13px' }}>
                         {item.product_title}
                         {item.platform_short_name && (
                           <span style={{ color: '#6c757d', fontWeight: 'normal' }}> - {item.platform_short_name}</span>
                         )}
                       </td>
-                      <td style={{ padding: '6px 8px', color: '#6c757d', fontSize: '11px' }}>{item.variant_type_code}</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px' }}>
+                      <td style={{ padding: '8px 10px', color: '#6c757d', fontSize: '13px' }}>{item.variant_type_code}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '13px' }}>
                         {editingLineItemId === item.purchase_order_item_id ? (
                           <input
                             type="number"
@@ -1634,38 +1647,38 @@ const PurchaseOrderCreate: React.FC = () => {
       {poId && (
         <div style={{
           background: '#f8f9fa',
-          padding: '4px 12px',
-          borderRadius: '3px',
+          padding: '8px 16px',
+          borderRadius: '4px',
           border: '1px solid #dee2e6',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexShrink: 0,
-          height: '24px',
+          height: '32px',
           marginTop: '4px'
         }}>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
             <div>
-              <span style={{ fontSize: '8px', color: '#6c757d', textTransform: 'uppercase' }}>Header: </span>
-              <span style={{ fontSize: '10px', fontWeight: 'bold', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: '11px', color: '#6c757d', textTransform: 'uppercase' }}>Header: </span>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace' }}>
                 ${totalCost.toFixed(2)}
               </span>
             </div>
             <div>
-              <span style={{ fontSize: '8px', color: '#6c757d', textTransform: 'uppercase' }}>Items: </span>
-              <span style={{ fontSize: '10px', fontWeight: 'bold', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: '11px', color: '#6c757d', textTransform: 'uppercase' }}>Items: </span>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace' }}>
                 ${lineItemsTotal.toFixed(2)}
               </span>
             </div>
             <div>
-              <span style={{ fontSize: '8px', color: '#6c757d', textTransform: 'uppercase' }}>Count: </span>
-              <span style={{ fontSize: '10px', fontWeight: 'bold' }}>
+              <span style={{ fontSize: '11px', color: '#6c757d', textTransform: 'uppercase' }}>Count: </span>
+              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
                 {lineItems.length}
               </span>
             </div>
           </div>
           
-          <div style={{ fontSize: '9px', color: '#6c757d', fontFamily: 'monospace' }}>
+          <div style={{ fontSize: '11px', color: '#6c757d', fontFamily: 'monospace' }}>
             {success?.is_locked 
               ? `✓ ${success.po_number} Locked`
               : `${success?.po_number} Ready`
