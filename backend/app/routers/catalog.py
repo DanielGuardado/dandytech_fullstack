@@ -5,7 +5,7 @@ from app.core.db import get_db
 from app.services.catalog_services import CatalogService
 from app.schemas.catalog import (
     CatalogSearchResponse, CatalogProductCreate, CatalogProductCreateResponse,
-    ListingVariantCreate, ListingVariantCreateResponse
+    ListingVariantCreate, ListingVariantCreateResponse, BrandsResponse
 )
 
 router = APIRouter()
@@ -35,3 +35,7 @@ def create_variant(
     db: Session = Depends(get_db),
 ):
     return CatalogService(db).create_variant(catalog_product_id, payload)
+
+@router.get("/brands", response_model=BrandsResponse)
+def get_brands(db: Session = Depends(get_db)):
+    return CatalogService(db).get_brands()

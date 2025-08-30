@@ -89,10 +89,11 @@ class CatalogRepo:
             rows = self.db.execute(
                 text("""
                     SELECT cp.catalog_product_id, cp.title, cp.category_id, c.name AS category_name,
-                           cp.brand, cp.upc,
+                           b.name AS brand, cp.upc,
                            g.platform_id, p.name AS platform_name, p.short_name
                     FROM dbo.CatalogProducts cp
                     JOIN dbo.Categories c ON c.category_id = cp.category_id
+                    LEFT JOIN dbo.Brands b ON b.brand_id = cp.brand_id
                     LEFT JOIN dbo.CatalogProductGames g ON g.catalog_product_id = cp.catalog_product_id
                     LEFT JOIN dbo.Platforms p ON p.platform_id = g.platform_id
                     WHERE cp.upc LIKE :upc
@@ -107,13 +108,14 @@ class CatalogRepo:
             text("""
                 ;WITH base AS (
                   SELECT cp.catalog_product_id, cp.title, cp.category_id, c.name AS category_name,
-                         cp.brand, cp.upc, g.platform_id, p.name AS platform_name, p.short_name,
+                         b.name AS brand, cp.upc, g.platform_id, p.name AS platform_name, p.short_name,
                          CASE WHEN cp.title LIKE :q + '%' THEN 100 ELSE 0 END +
                          CASE WHEN cp.title LIKE '%' + :q + '%' THEN 20 ELSE 0 END +
                          CASE WHEN (:pid IS NOT NULL AND g.platform_id = :pid) THEN 50 ELSE 0 END
                          AS score
                   FROM dbo.CatalogProducts cp
                   JOIN dbo.Categories c ON c.category_id = cp.category_id
+                  LEFT JOIN dbo.Brands b ON b.brand_id = cp.brand_id
                   LEFT JOIN dbo.CatalogProductGames g ON g.catalog_product_id = cp.catalog_product_id
                   LEFT JOIN dbo.Platforms p ON p.platform_id = g.platform_id
                   WHERE (:cid IS NULL OR cp.category_id = :cid)
@@ -154,7 +156,7 @@ class CatalogRepo:
         self, *,
         category_id: int,
         title: str,
-        brand: Optional[str],
+        brand_id: Optional[int],
         upc: Optional[str],
         release_year: Optional[int],
         attributes_json: Optional[dict],
@@ -165,15 +167,15 @@ class CatalogRepo:
         row = self.db.execute(
             text("""
                 INSERT INTO dbo.CatalogProducts
-                (category_id, title, brand, upc, release_year, attributes_json, created_at, updated_at)
+                (category_id, title, brand_id, upc, release_year, attributes_json, created_at, updated_at)
                 OUTPUT inserted.catalog_product_id
                 VALUES
-                (:category_id, :title, :brand, :upc, :release_year, :attrs, SYSDATETIME(), SYSDATETIME())
+                (:category_id, :title, :brand_id, :upc, :release_year, :attrs, SYSDATETIME(), SYSDATETIME())
             """),
             {
                 "category_id": category_id,
                 "title": title,
-                "brand": brand,
+                "brand_id": brand_id,
                 "upc": upc,
                 "release_year": release_year,
                 "attrs": attrs_param,
@@ -424,3 +426,58 @@ class CatalogRepo:
             vid = self.create_variant_basic(catalog_product_id, vtid)
         self.update_variant_market_value(vid, value)
         return {"variant_id": vid, "variant_type_code": vt_code, "current_market_value": (float(value) if value is not None else None)}
+
+    # ---------- Brand operations
+    
+    def get_all_brands(self) -> List[Dict]:
+        """Get all active brands"""
+        rows = self.db.execute(
+            text("""
+                SELECT brand_id, name
+                FROM dbo.Brands 
+                WHERE is_active = 1
+                ORDER BY name
+            """)
+        ).mappings().all()
+        return [dict(r) for r in rows]
+    
+    def find_or_create_brand(self, name: str) -> Dict:
+        """Find existing brand by name or create new one"""
+        # Try to find existing brand (case insensitive)
+        row = self.db.execute(
+            text("""
+                SELECT brand_id, name
+                FROM dbo.Brands 
+                WHERE LOWER(name) = LOWER(:name) AND is_active = 1
+            """),
+            {"name": name}
+        ).mappings().fetchone()
+        
+        if row:
+            return dict(row)
+        
+        # Create new brand
+        row = self.db.execute(
+            text("""
+                INSERT INTO dbo.Brands (name, is_active, created_at, updated_at)
+                OUTPUT inserted.brand_id, inserted.name
+                VALUES (:name, 1, SYSDATETIME(), SYSDATETIME())
+            """),
+            {"name": name}
+        ).mappings().fetchone()
+        
+        return dict(row)
+    
+    def get_brand_by_platform(self, platform_id: int) -> Optional[Dict]:
+        """Get the brand associated with a platform"""
+        row = self.db.execute(
+            text("""
+                SELECT b.brand_id, b.name
+                FROM dbo.Platforms p
+                JOIN dbo.Brands b ON b.brand_id = p.brand_id
+                WHERE p.platform_id = :platform_id AND p.is_active = 1 AND b.is_active = 1
+            """),
+            {"platform_id": platform_id}
+        ).mappings().fetchone()
+        
+        return dict(row) if row else None

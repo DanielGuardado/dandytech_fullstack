@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Category, Platform, CreateProductRequest } from '../types/api';
+import { Category, Platform, CreateProductRequest, Brand } from '../types/api';
+import { catalogService } from '../services/catalogService';
 
 interface CreateProductPanelProps {
   categories: Category[];
@@ -22,13 +23,32 @@ const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
     category_id: 0,
     title: initialQuery,
     brand: '',
+    brand_id: undefined,
     upc: '',
     release_year: undefined,
     game: undefined,
     console: undefined,
   });
 
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [loadingBrands, setLoadingBrands] = useState(true);
+
   const [availablePlatforms, setAvailablePlatforms] = useState<Platform[]>([]);
+
+  // Load brands on mount
+  useEffect(() => {
+    const loadBrands = async () => {
+      try {
+        const response = await catalogService.getBrands();
+        setBrands(response.items);
+      } catch (error) {
+        console.error('Failed to load brands:', error);
+      } finally {
+        setLoadingBrands(false);
+      }
+    };
+    loadBrands();
+  }, []);
 
   useEffect(() => {
     // Auto-select Video Game category if available
@@ -44,10 +64,13 @@ const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
       const hintPlatform = platforms.find(p => p.platform_id === platformHintId);
       if (hintPlatform) {
         // Set category to match the platform's category
+        // Also auto-populate brand if platform has brand_id
         setFormData(prev => ({
           ...prev,
           category_id: hintPlatform.category_id,
-          game: { platform_id: platformHintId }
+          game: { platform_id: platformHintId },
+          brand_id: hintPlatform.brand_id || prev.brand_id,
+          brand: '' // Clear string brand when using brand_id
         }));
       }
     }
@@ -110,12 +133,39 @@ const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
           firmware_sensitive: (e.target as HTMLInputElement).checked
         }
       }));
+    } else if (name === 'brand') {
+      // Handle custom brand text input - clear brand_id when typing
+      setFormData(prev => ({
+        ...prev,
+        brand: value,
+        brand_id: undefined
+      }));
     } else {
       setFormData(prev => ({
         ...prev,
         [name]: type === 'number' ? (value ? parseInt(value) : undefined) : value,
       }));
     }
+  };
+
+  const handleBrandSelect = (selectedBrandId: number) => {
+    const selectedBrand = brands.find(b => b.brand_id === selectedBrandId);
+    setFormData(prev => ({
+      ...prev,
+      brand_id: selectedBrandId,
+      brand: '' // Clear text input when selecting from dropdown
+    }));
+  };
+
+  const handleBrandInput = (value: string) => {
+    // Check if the typed value matches an existing brand
+    const matchingBrand = brands.find(b => b.name.toLowerCase() === value.toLowerCase());
+    
+    setFormData(prev => ({
+      ...prev,
+      brand: matchingBrand ? '' : value, // Clear brand string if matches existing
+      brand_id: matchingBrand ? matchingBrand.brand_id : undefined
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -131,7 +181,8 @@ const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
     const cleanedData: CreateProductRequest = {
       ...formData,
       title: titleizedTitle,
-      brand: formData.brand?.trim() || undefined,
+      brand: (!formData.brand_id && formData.brand?.trim()) ? formData.brand.trim() : undefined,
+      brand_id: formData.brand_id,
       upc: formData.upc?.trim() || undefined,
     };
 
@@ -255,14 +306,30 @@ const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="brand">Brand</label>
-            <input
-              type="text"
-              id="brand"
-              name="brand"
-              value={formData.brand}
-              onChange={handleInputChange}
-              placeholder="e.g., Sony, Nintendo"
-            />
+            {loadingBrands ? (
+              <div>Loading brands...</div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  id="brand"
+                  name="brand"
+                  value={
+                    formData.brand_id 
+                      ? brands.find(b => b.brand_id === formData.brand_id)?.name || ''
+                      : formData.brand || ''
+                  }
+                  onChange={(e) => handleBrandInput(e.target.value)}
+                  placeholder="Type brand name or select from list"
+                  list="brands-list"
+                />
+                <datalist id="brands-list">
+                  {brands.map(brand => (
+                    <option key={brand.brand_id} value={brand.name} />
+                  ))}
+                </datalist>
+              </div>
+            )}
           </div>
 
           <div className="form-group">

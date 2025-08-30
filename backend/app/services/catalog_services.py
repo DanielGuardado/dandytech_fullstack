@@ -101,13 +101,27 @@ class CatalogService:
     def create_product(self, payload) -> dict:
         # Validate category and required children by category name
         category_name = self.repo.get_category_name(payload.category_id)
+        
+        # Handle brand - either use brand_id directly or find/create from brand string
+        brand_id = None
+        if hasattr(payload, 'brand_id') and payload.brand_id:
+            brand_id = payload.brand_id
+        elif hasattr(payload, 'brand') and payload.brand:
+            brand_info = self.repo.find_or_create_brand(payload.brand.strip())
+            brand_id = brand_info['brand_id']
+        
+        # Auto-populate brand from platform if not provided and this is a video game
+        if not brand_id and category_name == "Video Game" and payload.game and payload.game.platform_id:
+            platform_brand = self.repo.get_brand_by_platform(payload.game.platform_id)
+            if platform_brand:
+                brand_id = platform_brand['brand_id']
 
         # Unique UPC enforced by filtered unique index; we surface a friendly 409
         try:
             new_id = self.repo.insert_catalog_product(
                 category_id=payload.category_id,
                 title=payload.title.strip(),
-                brand=(payload.brand or None),
+                brand_id=brand_id,
                 upc=(payload.upc or None),
                 release_year=payload.release_year,
                 attributes_json=payload.attributes_json,
@@ -175,4 +189,13 @@ class CatalogService:
             "current_market_value": float(row["current_market_value"]) if row["current_market_value"] is not None else None,
             "default_list_price": float(row["default_list_price"]) if row["default_list_price"] is not None else None,
             "is_active": bool(row["is_active"]),
+        }
+    
+    # ---------- GET /brands
+    def get_brands(self) -> dict:
+        """Get all active brands"""
+        brands = self.repo.get_all_brands()
+        return {
+            "items": brands,
+            "total": len(brands)
         }

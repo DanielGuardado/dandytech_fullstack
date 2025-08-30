@@ -66,7 +66,7 @@ class LookupsRepo:
     def list_platforms(self) -> List[Dict]:
         rows = self.db.execute(
             text("""
-                SELECT platform_id, name, short_name, category_id
+                SELECT platform_id, name, short_name, category_id, brand_id
                 FROM dbo.Platforms
                 WHERE is_active = 1
                 ORDER BY name

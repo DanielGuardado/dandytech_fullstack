@@ -5,6 +5,7 @@ import {
   PriceChartingSearchResponse,
   POLineItemCreate,
   POLineItem,
+  BrandsResponse,
 } from '../types/api';
 
 const API_BASE_URL = '/api/v1';
@@ -96,6 +97,11 @@ class CatalogService {
     return this.request(`/purchase-orders/${poId}/lock`, {
       method: 'POST',
     });
+  }
+
+  // Get all brands
+  async getBrands(): Promise<BrandsResponse> {
+    return this.request<BrandsResponse>('/catalog/brands');
   }
 }
 

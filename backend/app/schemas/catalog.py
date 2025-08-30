@@ -70,3 +70,13 @@ class ListingVariantCreateResponse(BaseModel):
     current_market_value: Optional[float] = None
     default_list_price: Optional[float] = None
     is_active: bool
+
+# ---------- Brands
+
+class Brand(BaseModel):
+    brand_id: int
+    name: str
+
+class BrandsResponse(BaseModel):
+    items: List[Brand]
+    total: int

@@ -55,7 +55,18 @@ export interface Platform {
   name: string;
   short_name: string;
   category_id: number;
+  brand_id?: number;
   is_active: boolean;
+}
+
+export interface Brand {
+  brand_id: number;
+  name: string;
+}
+
+export interface BrandsResponse {
+  items: Brand[];
+  total: number;
 }
 
 export interface VariantType {
@@ -109,7 +120,8 @@ export interface CatalogSearchResponse {
 export interface CreateProductRequest {
   category_id: number;
   title: string;
-  brand?: string;
+  brand?: string;  // Backward compatibility
+  brand_id?: number;  // New field
   upc?: string;
   release_year?: number;
   attributes_json?: any;
