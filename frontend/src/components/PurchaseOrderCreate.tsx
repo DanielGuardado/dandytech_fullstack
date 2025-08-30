@@ -512,7 +512,7 @@ const PurchaseOrderCreate: React.FC = () => {
 
   return (
     <div style={{ 
-      height: 'calc(100vh - 20px)', 
+      height: '100%', 
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
@@ -722,7 +722,7 @@ const PurchaseOrderCreate: React.FC = () => {
       {/* Main Content Area - 3 Column Layout */}
       <div style={{ 
         display: 'flex', 
-        flex: 1, 
+        flex: 1,
         gap: '8px',
         minHeight: 0,
         overflow: 'hidden'
@@ -835,7 +835,7 @@ const PurchaseOrderCreate: React.FC = () => {
             padding: '8px', 
             flex: 1, 
             overflow: 'auto',
-            maxHeight: 'calc(100vh - 160px)' // Ensure scrollable area
+            minHeight: 0 // Allow flex shrinking
           }}>
             <form onSubmit={(e) => { e.preventDefault(); handleCreatePO(); }} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               
@@ -1641,7 +1641,8 @@ const PurchaseOrderCreate: React.FC = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
           flexShrink: 0,
-          height: '24px'
+          height: '24px',
+          marginTop: '4px'
         }}>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <div>

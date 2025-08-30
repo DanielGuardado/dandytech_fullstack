@@ -35,7 +35,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          minHeight: '32px'
+          minHeight: '32px',
+          flexShrink: 0
         }}>
           <button 
             className="back-button" 
@@ -66,7 +67,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div style={{ width: '60px' }}></div> {/* Spacer to center the title */}
         </div>
       )}
-      {children}
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        {children}
+      </div>
     </div>
   );
 };

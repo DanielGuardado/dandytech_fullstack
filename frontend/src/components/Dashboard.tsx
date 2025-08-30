@@ -143,7 +143,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="dashboard" style={{ 
       padding: '16px', 
-      height: '100vh', 
+      height: '100%', 
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
