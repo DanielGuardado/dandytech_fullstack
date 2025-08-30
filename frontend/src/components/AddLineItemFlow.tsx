@@ -135,7 +135,15 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
     setError(null);
 
     try {
-      const results = await catalogService.searchPriceCharting(createdProductId, query, upc);
+      // Get platform name from the created product data
+      let platformName: string | undefined;
+      if (newProductData?.game?.platform_id) {
+        const platform = platforms.find(p => p.platform_id === newProductData.game?.platform_id);
+        // Use full platform name for better PriceCharting results
+        platformName = platform?.name || platform?.short_name;
+      }
+
+      const results = await catalogService.searchPriceCharting(createdProductId, query, upc, platformName);
       setPriceChartingResults(results.results);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to search PriceCharting');

@@ -46,10 +46,11 @@ class CatalogService {
   }
 
   // Search PriceCharting for a product
-  async searchPriceCharting(productId: number, query?: string, upc?: string): Promise<PriceChartingSearchResponse> {
+  async searchPriceCharting(productId: number, query?: string, upc?: string, platform?: string): Promise<PriceChartingSearchResponse> {
     const params = new URLSearchParams();
     if (query) params.append('q', query);
     if (upc) params.append('upc', upc);
+    if (platform) params.append('platform', platform);
     
     return this.request<PriceChartingSearchResponse>(
       `/catalog/${productId}/pricecharting/search?${params}`

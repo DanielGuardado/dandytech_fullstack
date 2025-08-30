@@ -13,9 +13,10 @@ router = APIRouter()
 def pc_search(
     catalog_product_id: int = Path(..., ge=1),
     q: Optional[str] = Query(None),
+    platform: Optional[str] = Query(None, description="Platform name or short name to include in search"),
     db: Session = Depends(get_db),
 ):
-    return PriceChartingService(db).search(catalog_product_id, q)
+    return PriceChartingService(db).search(catalog_product_id, q, platform)
 
 @router.post("/catalog/{catalog_product_id}/pricecharting/link", response_model=PCLinkResponse)
 def pc_link(

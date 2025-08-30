@@ -26,12 +26,25 @@ class PriceChartingService:
 
     
     # --- GET /catalog/{id}/pricecharting/search
-    def search(self, catalog_product_id: int, q: Optional[str]) -> Dict:
+    def search(self, catalog_product_id: int, q: Optional[str], platform: Optional[str] = None) -> Dict:
         ctx = self.repo.get_product_context(catalog_product_id)
         if ctx["category_name"] not in ALLOWED_PC_CATEGORIES:
             raise AppError("PriceCharting search is only available for Video Game / Console", 400)
 
-        query_used = (q or f"{ctx['title']} {ctx.get('platform_short') or ''}").strip()
+        # Build search query with platform context
+        title = ctx['title']
+        # Prefer full platform name over short name for better PriceCharting results
+        platform_hint = platform or ctx.get('platform_name') or ctx.get('platform_short') or ''
+        
+        if q:
+            # Use provided query, optionally append platform if not already included
+            query_used = q
+            if platform_hint and platform_hint.lower() not in q.lower():
+                query_used = f"{q} {platform_hint}"
+        else:
+            # Build query from title + platform
+            query_used = f"{title} {platform_hint}".strip()
+
         results = []
         if ctx.get("upc"):
             resp = self.pc.get_pricecharting_product_by_upc(ctx["upc"])
