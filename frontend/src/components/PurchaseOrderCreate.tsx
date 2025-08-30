@@ -468,15 +468,15 @@ const PurchaseOrderCreate: React.FC = () => {
 
   return (
     <div style={{ 
-      padding: '8px', 
-      height: 'calc(100vh - 40px)', 
+      height: 'calc(100vh - 20px)', 
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
-      gap: '6px'
+      gap: '4px',
+      padding: '4px'
     }}>
       
-      {/* PO Selector Bar */}
+      {/* PO Selector Bar - Compact Header */}
       <div style={{ 
         display: 'flex', 
         gap: '12px',
@@ -696,7 +696,7 @@ const PurchaseOrderCreate: React.FC = () => {
           maxHeight: '100%'
         }}>
           <div style={{ 
-            padding: '6px 12px',
+            padding: '4px 8px',
             borderBottom: '1px solid #dee2e6',
             display: 'flex',
             justifyContent: 'space-between',
@@ -788,12 +788,12 @@ const PurchaseOrderCreate: React.FC = () => {
           </div>
           
           <div style={{ 
-            padding: '12px', 
+            padding: '8px', 
             flex: 1, 
             overflow: 'auto',
-            maxHeight: 'calc(100vh - 120px)' // Ensure scrollable area
+            maxHeight: 'calc(100vh - 160px)' // Ensure scrollable area
           }}>
-            <form onSubmit={(e) => { e.preventDefault(); handleCreatePO(); }} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <form onSubmit={(e) => { e.preventDefault(); handleCreatePO(); }} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               
               {/* Source and Date */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1222,24 +1222,24 @@ const PurchaseOrderCreate: React.FC = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ background: '#f8f9fa', borderBottom: '1px solid #dee2e6' }}>
-                    <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Product</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Variant</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Qty</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Product</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Variant</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Qty</th>
                     {success?.is_locked ? (
                       <>
-                        <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Market Value</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Final Cost</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Market Value</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Final Cost</th>
                       </>
                     ) : (
                       <>
-                        <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Cost Basis</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Est. Unit Cost</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Cost Basis</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Est. Unit Cost</th>
                       </>
                     )}
-                    <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Source</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>% Allocated</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Total</th>
-                    {!success?.is_locked && <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Action</th>}
+                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Source</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>% Allocated</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Total</th>
+                    {!success?.is_locked && <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '9px' }}>Action</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1248,9 +1248,9 @@ const PurchaseOrderCreate: React.FC = () => {
                       borderBottom: '1px solid #e9ecef',
                       backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa'
                     }}>
-                      <td style={{ padding: '8px 10px', fontWeight: '500', fontSize: '11px' }}>{item.product_title}</td>
-                      <td style={{ padding: '8px 10px', color: '#6c757d', fontSize: '11px' }}>{item.variant_type_code}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px' }}>
+                      <td style={{ padding: '6px 8px', fontWeight: '500', fontSize: '11px' }}>{item.product_title}</td>
+                      <td style={{ padding: '6px 8px', color: '#6c757d', fontSize: '11px' }}>{item.variant_type_code}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px' }}>
                         {editingLineItemId === item.purchase_order_item_id ? (
                           <input
                             type="number"
@@ -1272,16 +1272,16 @@ const PurchaseOrderCreate: React.FC = () => {
                       </td>
                       {success?.is_locked ? (
                         <>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold' }}>
                             ${(item.allocation_basis || 0).toFixed(2)}
                           </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', color: '#28a745' }}>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', color: '#28a745' }}>
                             ${(item.allocated_unit_cost || 0).toFixed(2)}
                           </td>
                         </>
                       ) : (
                         <>
-                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                          <td style={{ padding: '6px 8px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                               {editingLineItemId === item.purchase_order_item_id && item.cost_assignment_method === 'manual' ? (
                                 <input
@@ -1338,7 +1338,7 @@ const PurchaseOrderCreate: React.FC = () => {
                               </span>
                             </div>
                           </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                          <td style={{ padding: '6px 8px', textAlign: 'right' }}>
                             {(() => {
                               const estimatedCost = calculateSimulatedUnitCost(item);
                               if (estimatedCost === null) {
@@ -1361,7 +1361,7 @@ const PurchaseOrderCreate: React.FC = () => {
                           </td>
                         </>
                       )}
-                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>
                         <span style={{
                           fontSize: '11px',
                           background: item.allocation_basis_source === 'pricecharting' ? '#17a2b8' :
@@ -1378,7 +1378,7 @@ const PurchaseOrderCreate: React.FC = () => {
                            item.cost_assignment_method === 'manual' ? 'Manual' : 'Other'}
                         </span>
                       </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>
                         {(() => {
                           const percentage = calculateItemPercentage(item);
                           if (percentage === null) {
@@ -1398,16 +1398,19 @@ const PurchaseOrderCreate: React.FC = () => {
                           );
                         })()}
                       </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', fontSize: '15px' }}>
+                      <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold', fontSize: '15px' }}>
                         ${success?.is_locked
                           ? ((item.allocated_unit_cost || 0) * item.quantity_expected).toFixed(2)
                           : item.cost_assignment_method === 'manual'
                             ? ((item.allocated_unit_cost || 0) * item.quantity_expected).toFixed(2)
-                            : ((item.allocation_basis || 0) * item.quantity_expected).toFixed(2)
+                            : (() => {
+                                const simulatedCost = calculateSimulatedUnitCost(item);
+                                return ((simulatedCost || 0) * item.quantity_expected).toFixed(2);
+                              })()
                         }
                       </td>
                       {!success?.is_locked && (
-                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                        <td style={{ padding: '6px 8px', textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                             {editingLineItemId === item.purchase_order_item_id ? (
                               <>
