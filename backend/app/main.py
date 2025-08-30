@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import lookups, catalog, purchase_orders, receiving, inventory, health, catalog_pricecharting as pc_router, attributes as attributes_router, inventory_attributes as inventory_attributes_router
+from app.routers import lookups, catalog, purchase_orders, receiving, inventory, health, catalog_pricecharting as pc_router, attributes as attributes_router, inventory_attributes as inventory_attributes_router, purchase_calculator
 from app.core.errors import AppError, app_error_handler
 
 
@@ -17,6 +17,7 @@ app.include_router(inventory.router, prefix="/api/v1/inventory", tags=["inventor
 app.include_router(pc_router.router, prefix="/api/v1", tags=["pricecharting"])
 app.include_router(attributes_router.router, prefix="/api/v1", tags=["attributes"])
 app.include_router(inventory_attributes_router.router, prefix="/api/v1", tags=["inventory_attributes"])
+app.include_router(purchase_calculator.router, prefix="/api/v1", tags=["purchase_calculator"])
 
 @app.get("/health")
 def health():
