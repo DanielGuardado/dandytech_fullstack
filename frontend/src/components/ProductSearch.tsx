@@ -67,6 +67,7 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
           break;
         case 'Enter':
           e.preventDefault();
+          e.stopPropagation();
           if (results[selectedIndex]) {
             onProductSelected(results[selectedIndex]);
           }
@@ -140,7 +141,6 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
             key={product.catalog_product_id}
             className={`search-result-item ${index === selectedIndex ? 'selected' : ''}`}
             onClick={() => onProductSelected(product)}
-            onMouseEnter={() => setSelectedIndex(index)}
           >
             <div className="product-info">
               <div className="product-title">{product.title}</div>

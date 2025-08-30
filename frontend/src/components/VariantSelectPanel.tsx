@@ -92,8 +92,15 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    // Add a small delay to prevent capturing Enter key from ProductSearch
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('keydown', handleKeyDown);
+    }, 200); // 200ms delay to ensure ProductSearch Enter event is fully processed
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [selectedVariant, availableVariants, selectedVariantIndex]);
 
   const handleVariantSelect = (variant: ProductVariant) => {
@@ -199,7 +206,6 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
                     key={variant.variant_id}
                     className={`variant-item ${index === selectedVariantIndex ? 'selected' : ''}`}
                     onClick={() => handleVariantSelect(variant)}
-                    onMouseEnter={() => setSelectedVariantIndex(index)}
                   >
                     <div className="variant-info">
                       <div className="variant-name">{variant.display_name || `${variant.variant_type_code || 'Unknown'} Variant`}</div>

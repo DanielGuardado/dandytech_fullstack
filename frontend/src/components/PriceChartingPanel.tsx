@@ -154,7 +154,6 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
                     key={index}
                     className={`pc-result-item ${index === selectedIndex ? 'selected' : ''}`}
                     onClick={() => onLink(result.id)}
-                    onMouseEnter={() => setSelectedIndex(index)}
                   >
                     <div className="pc-result-info">
                       <div className="pc-result-title">{result.title}</div>
