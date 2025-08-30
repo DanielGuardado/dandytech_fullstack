@@ -1,0 +1,378 @@
+import React, { useState } from 'react';
+import { 
+  Category, 
+  Platform, 
+  VariantType, 
+  Product,
+  ProductVariant,
+  CreateProductRequest,
+  PriceChartingResult,
+  POLineItemCreate 
+} from '../types/api';
+import { catalogService } from '../services/catalogService';
+import ProductSearch from './ProductSearch';
+import CreateProductPanel from './CreateProductPanel';
+import PriceChartingPanel from './PriceChartingPanel';
+import VariantSelectPanel from './VariantSelectPanel';
+
+interface AllocationDetails {
+  allocation_basis: number;
+  cost_assignment_method: 'manual' | 'by_market_value';
+  allocation_basis_source: string;
+  quantity: number;
+}
+
+interface AddLineItemFlowProps {
+  categories: Category[];
+  platforms: Platform[];
+  variantTypes: VariantType[];
+  currentLineItems: Array<{allocation_basis: number; quantity_expected: number; cost_assignment_method: string}>;
+  onAddItem: (item: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number }, allocation: AllocationDetails) => void;
+  onCancel: () => void;
+}
+
+type FlowStep = 'search' | 'create-product' | 'pc-link' | 'select-variant' | 'create-variant';
+
+const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
+  categories,
+  platforms,
+  variantTypes,
+  currentLineItems,
+  onAddItem,
+  onCancel
+}) => {
+  const [currentStep, setCurrentStep] = useState<FlowStep>('search');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Flow state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [newProductData, setNewProductData] = useState<CreateProductRequest | null>(null);
+  const [createdProductId, setCreatedProductId] = useState<number | null>(null);
+  const [priceChartingResults, setPriceChartingResults] = useState<PriceChartingResult[]>([]);
+  const [availableVariants, setAvailableVariants] = useState<ProductVariant[]>([]);
+
+  const handleVariantSelected = (variant: ProductVariant, allocation: AllocationDetails) => {
+    console.log('AddLineItemFlow - Variant selected with allocation:', {
+      source: 'handleVariantSelected',
+      variant: variant,
+      allocation: allocation,
+      selectedProduct: selectedProduct,
+      createdProductId: createdProductId,
+      newProductData: newProductData
+    });
+    
+    // Determine product info - use selectedProduct if available, otherwise use created product data
+    const productId = selectedProduct?.catalog_product_id || createdProductId;
+    const productTitle = selectedProduct?.title || newProductData?.title || 'Unknown Product';
+    
+    if (!productId) {
+      console.error('No product ID available for line item creation');
+      return;
+    }
+    
+    // Create line item data
+    const lineItem: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number } = {
+      catalog_product_id: productId,
+      variant_id: variant.variant_id,
+      quantity_expected: allocation.quantity,
+      product_title: productTitle,
+      variant_type_code: variant.variant_type_code,
+      current_market_value: variant.current_market_value || undefined
+    };
+
+    const allocationData: AllocationDetails = {
+      allocation_basis: allocation.allocation_basis,
+      cost_assignment_method: allocation.cost_assignment_method,
+      allocation_basis_source: allocation.allocation_basis_source,
+      quantity: allocation.quantity
+    };
+
+    onAddItem(lineItem, allocationData);
+  };
+
+
+  const handleProductSelected = (product: Product) => {
+    setSelectedProduct(product);
+    setAvailableVariants(product.variants);
+    setCurrentStep('select-variant');
+  };
+
+  const handleCreateNewProduct = (query: string) => {
+    setSearchQuery(query);
+    setCurrentStep('create-product');
+  };
+
+  const handleProductCreated = async (productData: CreateProductRequest) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await catalogService.createProduct(productData);
+      setCreatedProductId(result.catalog_product_id);
+      setNewProductData(productData);
+
+      // Check if this is a video game that should be linked to PriceCharting
+      const category = categories.find(c => c.category_id === productData.category_id);
+      if (category?.name === 'Video Game') {
+        setCurrentStep('pc-link');
+      } else {
+        // For non-games, go straight to manual variant creation
+        setCurrentStep('create-variant');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create product');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePriceChartingSearch = async (query?: string, upc?: string) => {
+    if (!createdProductId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const results = await catalogService.searchPriceCharting(createdProductId, query, upc);
+      setPriceChartingResults(results.results);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to search PriceCharting');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePriceChartingLink = async (priceChartingId: string) => {
+    if (!createdProductId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await catalogService.linkToPriceCharting(createdProductId, priceChartingId);
+      // Transform LinkedVariant objects to full ProductVariant objects
+      const transformedVariants: ProductVariant[] = (result.variants || []).map((linkedVariant: any) => {
+        const variantType = variantTypes.find(vt => vt.code === linkedVariant.variant_type_code);
+        return {
+          variant_id: linkedVariant.variant_id,
+          variant_type_id: variantType?.variant_type_id || 0,
+          variant_type_code: linkedVariant.variant_type_code,
+          display_name: variantType?.display_name || `${linkedVariant.variant_type_code} Variant`,
+          current_market_value: linkedVariant.current_market_value,
+          default_list_price: linkedVariant.current_market_value,
+        };
+      });
+      setAvailableVariants(transformedVariants);
+      setCurrentStep('select-variant');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to link to PriceCharting');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSkipPriceCharting = async () => {
+    if (!createdProductId) return;
+
+    setLoading(true);
+    try {
+      await catalogService.markNotOnPriceCharting(createdProductId);
+      setCurrentStep('create-variant');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to mark as not on PC');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateVariant = async (variantTypeId: number, defaultListPrice?: number) => {
+    if (!createdProductId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await catalogService.createVariant(createdProductId, variantTypeId, defaultListPrice);
+      const variantType = variantTypes.find(vt => vt.variant_type_id === variantTypeId);
+      
+      const newVariant: ProductVariant = {
+        variant_id: result.variant_id,
+        variant_type_id: variantTypeId,
+        variant_type_code: variantType?.code || 'UNKNOWN',
+        display_name: variantType?.display_name || 'Unknown',
+        current_market_value: defaultListPrice,
+        default_list_price: defaultListPrice,
+      };
+
+      console.log('AddLineItemFlow - Created new variant:', {
+        source: 'handleCreateVariant',
+        apiResult: result,
+        variantType: variantType,
+        defaultListPrice: defaultListPrice,
+        constructedVariant: newVariant
+      });
+
+      setAvailableVariants([newVariant]);
+      setCurrentStep('select-variant');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create variant');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const handleBack = () => {
+    switch (currentStep) {
+      case 'create-product':
+      case 'select-variant':
+        setCurrentStep('search');
+        break;
+      case 'pc-link':
+        setCurrentStep('create-product');
+        break;
+      case 'create-variant':
+        setCurrentStep('pc-link');
+        break;
+    }
+  };
+
+  return (
+    <div className="add-line-item-flow" style={{ 
+      height: '100%', 
+      display: 'flex', 
+      flexDirection: 'column',
+      background: '#fff',
+      border: 'none',
+      borderRadius: '0',
+      padding: '0',
+      margin: '0'
+    }}>
+      <div className="flow-header" style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        padding: '6px 12px',
+        borderBottom: '1px solid #dee2e6',
+        flexShrink: 0,
+        minHeight: '32px'
+      }}>
+        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1d1d1f', margin: '0' }}>Add Line Item</h4>
+        <div className="flow-actions" style={{ display: 'flex', gap: '8px' }}>
+          {currentStep !== 'search' && (
+            <button 
+              className="back-button-small" 
+              onClick={handleBack}
+              style={{
+                padding: '4px 8px',
+                background: 'transparent',
+                border: '1px solid #6c757d',
+                borderRadius: '3px',
+                color: '#6c757d',
+                fontSize: '10px',
+                cursor: 'pointer'
+              }}
+            >
+              ← Back
+            </button>
+          )}
+          <button 
+            className="cancel-button" 
+            onClick={onCancel}
+            style={{
+              padding: '4px 8px',
+              background: '#dc3545',
+              border: 'none',
+              borderRadius: '3px',
+              color: 'white',
+              fontSize: '10px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <div style={{ 
+        flex: 1, 
+        overflow: 'auto',
+        padding: '12px',
+        maxHeight: 'calc(100vh - 120px)'
+      }}>
+        {error && (
+          <div className="error-message" style={{
+            background: '#f8d7da',
+            color: '#721c24',
+            padding: '8px 12px',
+            borderRadius: '3px',
+            border: '1px solid #f5c6cb',
+            marginBottom: '12px',
+            fontSize: '11px'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {currentStep === 'search' && (
+          <ProductSearch
+            onProductSelected={handleProductSelected}
+            onCreateNew={handleCreateNewProduct}
+          />
+        )}
+
+        {currentStep === 'create-product' && (
+        <CreateProductPanel
+          categories={categories}
+          platforms={platforms}
+          initialQuery={searchQuery}
+          onProductCreated={handleProductCreated}
+          loading={loading}
+        />
+      )}
+
+      {currentStep === 'pc-link' && (
+        <PriceChartingPanel
+          productTitle={newProductData?.title || ''}
+          upc={newProductData?.upc}
+          results={priceChartingResults}
+          onSearch={handlePriceChartingSearch}
+          onLink={handlePriceChartingLink}
+          onSkip={handleSkipPriceCharting}
+          loading={loading}
+        />
+      )}
+
+      {currentStep === 'create-variant' && createdProductId && (
+        <VariantSelectPanel
+          variantTypes={variantTypes}
+          availableVariants={[]}
+          onVariantSelected={handleVariantSelected}
+          onCreateVariant={handleCreateVariant}
+          currentLineItems={currentLineItems}
+          loading={loading}
+          showCreateVariant={true}
+        />
+      )}
+
+      {currentStep === 'select-variant' && availableVariants.length > 0 && (
+        <VariantSelectPanel
+          variantTypes={variantTypes}
+          availableVariants={availableVariants}
+          onVariantSelected={handleVariantSelected}
+          onCreateVariant={handleCreateVariant}
+          currentLineItems={currentLineItems}
+          loading={loading}
+          showCreateVariant={false}
+        />
+      )}
+
+      </div>
+    </div>
+  );
+};
+
+export default AddLineItemFlow;
