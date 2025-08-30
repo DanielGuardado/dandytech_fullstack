@@ -10,6 +10,7 @@ import {
   POLineItemCreate 
 } from '../types/api';
 import { catalogService } from '../services/catalogService';
+import { extractPlatformFromQuery, cleanTitle } from '../utils/platformExtractor';
 import ProductSearch from './ProductSearch';
 import CreateProductPanel from './CreateProductPanel';
 import PriceChartingPanel from './PriceChartingPanel';
@@ -52,6 +53,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   const [createdProductId, setCreatedProductId] = useState<number | null>(null);
   const [priceChartingResults, setPriceChartingResults] = useState<PriceChartingResult[]>([]);
   const [availableVariants, setAvailableVariants] = useState<ProductVariant[]>([]);
+  const [platformHintId, setPlatformHintId] = useState<number | null>(null);
 
   const handleVariantSelected = (variant: ProductVariant, allocation: AllocationDetails) => {
     console.log('AddLineItemFlow - Variant selected with allocation:', {
@@ -100,7 +102,12 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   };
 
   const handleCreateNewProduct = (query: string) => {
-    setSearchQuery(query);
+    // Extract platform information from the search query
+    const { title, platformId } = extractPlatformFromQuery(query, platforms);
+    
+    // Use cleaned title and store platform hint
+    setSearchQuery(cleanTitle(title));
+    setPlatformHintId(platformId);
     setCurrentStep('create-product');
   };
 
@@ -339,6 +346,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           initialQuery={searchQuery}
           onProductCreated={handleProductCreated}
           loading={loading}
+          platformHintId={platformHintId}
         />
       )}
 

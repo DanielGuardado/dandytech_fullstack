@@ -48,6 +48,13 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
     setQuery(e.target.value);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // If Enter is pressed and there are no results (but there is a query), create new product
+    if (e.key === 'Enter' && query.trim() && !loading && results.length === 0 && !error) {
+      handleCreateNew();
+    }
+  };
+
   const handleCreateNew = () => {
     onCreateNew(query);
   };
@@ -57,9 +64,10 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
       <div className="search-input-container">
         <input
           type="text"
-          placeholder="Search products or type to create new..."
+          placeholder="Search products or press Enter to create new..."
           value={query}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           className="search-input"
           autoFocus
         />
@@ -77,6 +85,9 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
           <div className="no-results">
             <div className="no-results-message">
               No products found for "{query}"
+            </div>
+            <div className="no-results-hint">
+              Press Enter or click below to create new product
             </div>
             <button 
               className="create-new-button"

@@ -268,6 +268,108 @@ class CatalogRepo:
             {"f": 1 if flag else 0, "id": catalog_product_id},
         )
 
+    def get_product_attributes_json(self, catalog_product_id: int) -> Optional[str]:
+        """Get the current attributes_json for a product"""
+        row = self.db.execute(
+            text("SELECT attributes_json FROM dbo.CatalogProducts WHERE catalog_product_id = :id"),
+            {"id": catalog_product_id}
+        ).fetchone()
+        return row[0] if row else None
+
+    def find_platform_by_name(self, platform_name: str) -> Optional[Dict]:
+        """Find platform by name (case-insensitive, flexible matching)"""
+        # Try exact name match first
+        row = self.db.execute(
+            text("""
+                SELECT platform_id, name, short_name, category_id
+                FROM dbo.Platforms 
+                WHERE is_active = 1 AND (LOWER(name) = LOWER(:name) OR LOWER(short_name) = LOWER(:name))
+            """),
+            {"name": platform_name}
+        ).mappings().fetchone()
+        
+        if row:
+            return dict(row)
+        
+        # Try partial matching for common variations
+        row = self.db.execute(
+            text("""
+                SELECT platform_id, name, short_name, category_id
+                FROM dbo.Platforms 
+                WHERE is_active = 1 AND (
+                    LOWER(name) LIKE LOWER(:pattern) OR 
+                    LOWER(short_name) LIKE LOWER(:pattern) OR
+                    LOWER(:name) LIKE LOWER(name + '%') OR
+                    LOWER(:name) LIKE LOWER(short_name + '%')
+                )
+                ORDER BY 
+                    CASE WHEN LOWER(name) = LOWER(:name) THEN 1
+                         WHEN LOWER(short_name) = LOWER(:name) THEN 2
+                         ELSE 3 END
+            """),
+            {"name": platform_name, "pattern": f"%{platform_name}%"}
+        ).mappings().fetchone()
+        
+        return dict(row) if row else None
+
+    def create_platform(self, name: str, short_name: Optional[str] = None, category_id: int = 2) -> Dict:
+        """Create a new platform (category_id=2 is typically Video Game)"""
+        row = self.db.execute(
+            text("""
+                INSERT INTO dbo.Platforms (name, short_name, category_id, is_active, created_at, updated_at)
+                OUTPUT inserted.platform_id, inserted.name, inserted.short_name, inserted.category_id
+                VALUES (:name, :short_name, :category_id, 1, SYSDATETIME(), SYSDATETIME())
+            """),
+            {
+                "name": name,
+                "short_name": short_name or name,
+                "category_id": category_id
+            }
+        ).mappings().fetchone()
+        
+        return dict(row)
+
+    def update_game_platform(self, catalog_product_id: int, platform_id: int) -> None:
+        """Update the platform_id for a game product"""
+        self.db.execute(
+            text("""
+                UPDATE dbo.CatalogProductGames 
+                SET platform_id = :platform_id, updated_at = SYSDATETIME()
+                WHERE catalog_product_id = :catalog_product_id
+            """),
+            {"catalog_product_id": catalog_product_id, "platform_id": platform_id}
+        )
+
+    def update_product_from_pricecharting(self, catalog_product_id: int, *, 
+                                        title: str, upc: Optional[str] = None, 
+                                        release_year: Optional[int] = None, 
+                                        attributes_json: Optional[str] = None):
+        """Update product with metadata extracted from PriceCharting"""
+        # Build update clauses based on provided data
+        updates = ["title = :title", "updated_at = SYSDATETIME()"]
+        params = {"id": catalog_product_id, "title": title}
+        
+        # Only update UPC if provided and current UPC is empty
+        if upc:
+            updates.append("upc = CASE WHEN upc IS NULL OR upc = '' THEN :upc ELSE upc END")
+            params["upc"] = upc
+            
+        if release_year is not None:
+            updates.append("release_year = :release_year")
+            params["release_year"] = release_year
+            
+        if attributes_json is not None:
+            updates.append("attributes_json = :attributes_json")
+            params["attributes_json"] = attributes_json
+        
+        sql = f"""
+            UPDATE dbo.CatalogProducts 
+            SET {', '.join(updates)}
+            WHERE catalog_product_id = :id
+        """
+        
+        self.db.execute(text(sql), params)
+
     # --- variant helpers (upsert for LOOSE/OP/NEW)
     def variant_type_id_by_code(self, code: str) -> int:
         row = self.db.execute(

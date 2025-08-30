@@ -7,6 +7,7 @@ interface CreateProductPanelProps {
   initialQuery: string;
   onProductCreated: (productData: CreateProductRequest) => void;
   loading: boolean;
+  platformHintId?: number | null;
 }
 
 const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
@@ -14,7 +15,8 @@ const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
   platforms,
   initialQuery,
   onProductCreated,
-  loading
+  loading,
+  platformHintId
 }) => {
   const [formData, setFormData] = useState<CreateProductRequest>({
     category_id: 0,
@@ -35,6 +37,21 @@ const CreateProductPanel: React.FC<CreateProductPanelProps> = ({
       setFormData(prev => ({ ...prev, category_id: videoGameCategory.category_id }));
     }
   }, [categories, formData.category_id]);
+
+  useEffect(() => {
+    // Auto-select platform if hint provided
+    if (platformHintId) {
+      const hintPlatform = platforms.find(p => p.platform_id === platformHintId);
+      if (hintPlatform) {
+        // Set category to match the platform's category
+        setFormData(prev => ({
+          ...prev,
+          category_id: hintPlatform.category_id,
+          game: { platform_id: platformHintId }
+        }));
+      }
+    }
+  }, [platformHintId, platforms]);
 
   useEffect(() => {
     // Filter platforms based on selected category
