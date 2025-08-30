@@ -19,6 +19,7 @@ interface LineItemWithDetails extends POLineItem {
   product_title?: string;
   variant_type_code?: string;
   current_market_value?: number;
+  platform_short_name?: string;
 }
 
 const PurchaseOrderCreate: React.FC = () => {
@@ -64,6 +65,18 @@ const PurchaseOrderCreate: React.FC = () => {
   // Refs for keyboard navigation
   const sourceFieldRef = useRef<HTMLSelectElement>(null);
 
+  // Helper function for consistent focus styling
+  const addFocusHandlers = () => ({
+    onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+      e.target.style.borderColor = '#007aff';
+      e.target.style.boxShadow = '0 0 0 3px rgba(0, 122, 255, 0.15)';
+    },
+    onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+      e.target.style.borderColor = '#dee2e6';
+      e.target.style.boxShadow = 'none';
+    }
+  });
+
   useEffect(() => {
     const loadLookups = async () => {
       try {
@@ -76,6 +89,11 @@ const PurchaseOrderCreate: React.FC = () => {
         
         if (lookups.sources.length > 0) {
           setFormData(prev => ({ ...prev, source_id: lookups.sources[0].source_id }));
+          
+          // Auto-focus the source field for immediate keyboard workflow
+          setTimeout(() => {
+            sourceFieldRef.current?.focus();
+          }, 100);
         }
       } catch (err) {
         setError(`Failed to load form data: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -87,9 +105,20 @@ const PurchaseOrderCreate: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
+    
+    let processedValue = value;
+    if (type === 'number') {
+      // Remove leading zeros but preserve single "0"
+      if (value !== '' && value !== '0') {
+        processedValue = value.replace(/^0+/, '') || '0';
+        // Update the input field to show the processed value
+        (e.target as HTMLInputElement).value = processedValue;
+      }
+    }
+    
     const newFormData = {
       ...formData,
-      [name]: type === 'number' ? parseFloat(value) || 0 : value,
+      [name]: type === 'number' ? parseFloat(processedValue) || 0 : processedValue,
     };
     
     setFormData(newFormData);
@@ -245,7 +274,7 @@ const PurchaseOrderCreate: React.FC = () => {
     allocation_basis_source: string;
   }
 
-  const handleAddLineItem = async (lineItemData: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number }, allocationDetails: AllocationDetails) => {
+  const handleAddLineItem = async (lineItemData: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number; platform_short_name?: string }, allocationDetails: AllocationDetails) => {
     if (!poId) {
       setError('Must create PO first');
       return;
@@ -269,6 +298,7 @@ const PurchaseOrderCreate: React.FC = () => {
         product_title: lineItemData.product_title,
         variant_type_code: lineItemData.variant_type_code,
         current_market_value: lineItemData.current_market_value,
+        platform_short_name: lineItemData.platform_short_name,
       };
 
       setLineItems(prev => [...prev, itemWithDetails]);
@@ -341,7 +371,8 @@ const PurchaseOrderCreate: React.FC = () => {
               // Preserve display fields that aren't returned by the API
               product_title: item.product_title,
               variant_type_code: item.variant_type_code,
-              current_market_value: item.current_market_value
+              current_market_value: item.current_market_value,
+              platform_short_name: item.platform_short_name
             }
           : item
       ));
@@ -829,8 +860,11 @@ const PurchaseOrderCreate: React.FC = () => {
                       borderRadius: '3px',
                       fontSize: '12px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
-                      color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529'
+                      color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529',
+                      transition: 'all 0.15s ease-in-out',
+                      outline: 'none'
                     }}
+                    {...addFocusHandlers()}
                   >
                     {sources.map(source => (
                       <option key={source.source_id} value={source.source_id}>
@@ -943,8 +977,11 @@ const PurchaseOrderCreate: React.FC = () => {
                       fontSize: '12px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
                       color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529',
-                      fontFamily: 'monospace'
+                      fontFamily: 'monospace',
+                      transition: 'all 0.15s ease-in-out',
+                      outline: 'none'
                     }}
+                    {...addFocusHandlers()}
                   />
                 </div>
                 
@@ -969,8 +1006,11 @@ const PurchaseOrderCreate: React.FC = () => {
                       fontSize: '12px',
                       background: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#f8f9fa' : 'white',
                       color: (!!poId && !isEditingHeader && !hasUnsavedChanges) ? '#6c757d' : '#212529',
-                      fontFamily: 'monospace'
+                      fontFamily: 'monospace',
+                      transition: 'all 0.15s ease-in-out',
+                      outline: 'none'
                     }}
+                    {...addFocusHandlers()}
                   />
                 </div>
               </div>
@@ -1262,7 +1302,12 @@ const PurchaseOrderCreate: React.FC = () => {
                       borderBottom: '1px solid #e9ecef',
                       backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa'
                     }}>
-                      <td style={{ padding: '6px 8px', fontWeight: '500', fontSize: '11px' }}>{item.product_title}</td>
+                      <td style={{ padding: '6px 8px', fontWeight: '500', fontSize: '11px' }}>
+                        {item.product_title}
+                        {item.platform_short_name && (
+                          <span style={{ color: '#6c757d', fontWeight: 'normal' }}> - {item.platform_short_name}</span>
+                        )}
+                      </td>
                       <td style={{ padding: '6px 8px', color: '#6c757d', fontSize: '11px' }}>{item.variant_type_code}</td>
                       <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px' }}>
                         {editingLineItemId === item.purchase_order_item_id ? (

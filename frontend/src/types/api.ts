@@ -181,6 +181,7 @@ export interface POLineItem {
   product_title?: string;
   variant_type_code?: string;
   variant_display_name?: string;
+  platform_short_name?: string;
 }
 
 export interface PORow {

@@ -28,7 +28,7 @@ interface AddLineItemFlowProps {
   platforms: Platform[];
   variantTypes: VariantType[];
   currentLineItems: Array<{allocation_basis: number; quantity_expected: number; cost_assignment_method: string}>;
-  onAddItem: (item: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number }, allocation: AllocationDetails) => void;
+  onAddItem: (item: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number; platform_short_name?: string }, allocation: AllocationDetails) => void;
   onCancel: () => void;
 }
 
@@ -54,6 +54,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   const [priceChartingResults, setPriceChartingResults] = useState<PriceChartingResult[]>([]);
   const [availableVariants, setAvailableVariants] = useState<ProductVariant[]>([]);
   const [platformHintId, setPlatformHintId] = useState<number | null>(null);
+  const [priceChartingTitle, setPriceChartingTitle] = useState<string | null>(null);
 
   const handleVariantSelected = (variant: ProductVariant, allocation: AllocationDetails) => {
     console.log('AddLineItemFlow - Variant selected with allocation:', {
@@ -67,21 +68,35 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
     
     // Determine product info - use selectedProduct if available, otherwise use created product data
     const productId = selectedProduct?.catalog_product_id || createdProductId;
-    const productTitle = selectedProduct?.title || newProductData?.title || 'Unknown Product';
+    const productTitle = selectedProduct?.title || priceChartingTitle || newProductData?.title || 'Unknown Product';
+    const platformShortName = selectedProduct?.platform?.short_name;
     
     if (!productId) {
       console.error('No product ID available for line item creation');
       return;
     }
     
+    // Debug: Log the IDs and title we're about to use
+    console.log('Line item creation debug:', {
+      productId: productId,
+      variantId: variant.variant_id,
+      productTitle: productTitle,
+      selectedProductTitle: selectedProduct?.title,
+      priceChartingTitle: priceChartingTitle,
+      originalTitle: newProductData?.title,
+      selectedProductId: selectedProduct?.catalog_product_id,
+      createdProductId: createdProductId
+    });
+    
     // Create line item data
-    const lineItem: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number } = {
+    const lineItem: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number; platform_short_name?: string } = {
       catalog_product_id: productId,
       variant_id: variant.variant_id,
       quantity_expected: allocation.quantity,
       product_title: productTitle,
       variant_type_code: variant.variant_type_code,
-      current_market_value: variant.current_market_value || undefined
+      current_market_value: variant.current_market_value || undefined,
+      platform_short_name: platformShortName
     };
 
     const allocationData: AllocationDetails = {
@@ -106,6 +121,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
     setPriceChartingResults([]);
     setAvailableVariants([]);
     setPlatformHintId(null);
+    setPriceChartingTitle(null);
     setError(null);
   };
 
@@ -174,14 +190,22 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
     }
   };
 
-  const handlePriceChartingLink = async (priceChartingId: string) => {
+  const handlePriceChartingLink = async (priceChartingId: string, selectedResult: PriceChartingResult) => {
     if (!createdProductId) return;
 
     setLoading(true);
     setError(null);
 
+    // Store the PriceCharting title for immediate use
+    setPriceChartingTitle(selectedResult.title);
+    console.log('Stored PriceCharting title:', selectedResult.title);
+
     try {
       const result = await catalogService.linkToPriceCharting(createdProductId, priceChartingId);
+      
+      // Debug: Log the API response to understand its structure
+      console.log('PriceCharting link API response:', result);
+      
       // Transform LinkedVariant objects to full ProductVariant objects
       const transformedVariants: ProductVariant[] = (result.variants || []).map((linkedVariant: any) => {
         const variantType = variantTypes.find(vt => vt.code === linkedVariant.variant_type_code);

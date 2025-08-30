@@ -55,6 +55,7 @@ class POLine(BaseModel):
     product_title: Optional[str] = None
     variant_type_code: Optional[str] = None
     variant_display_name: Optional[str] = None
+    platform_short_name: Optional[str] = None
 
 class POLineReturn(BaseModel):
     purchase_order_item_id: int
@@ -72,6 +73,7 @@ class POLineReturn(BaseModel):
     product_title: Optional[str] = None
     variant_type_code: Optional[str] = None
     variant_display_name: Optional[str] = None
+    platform_short_name: Optional[str] = None
 
 # ---------- Lock response
 class POLockResponse(BaseModel):

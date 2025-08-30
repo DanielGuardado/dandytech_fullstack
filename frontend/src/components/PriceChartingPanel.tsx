@@ -6,7 +6,7 @@ interface PriceChartingPanelProps {
   upc?: string;
   results: PriceChartingResult[];
   onSearch: (query?: string, upc?: string) => void;
-  onLink: (priceChartingId: string) => void;
+  onLink: (priceChartingId: string, selectedResult: PriceChartingResult) => void;
   onSkip: () => void;
   loading: boolean;
 }
@@ -54,7 +54,7 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
         case 'Enter':
           e.preventDefault();
           if (results[selectedIndex]) {
-            onLink(results[selectedIndex].id);
+            onLink(results[selectedIndex].id, results[selectedIndex]);
           }
           break;
         case 'Escape':
@@ -153,7 +153,7 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
                   <div 
                     key={index}
                     className={`pc-result-item ${index === selectedIndex ? 'selected' : ''}`}
-                    onClick={() => onLink(result.id)}
+                    onClick={() => onLink(result.id, result)}
                   >
                     <div className="pc-result-info">
                       <div className="pc-result-title">{result.title}</div>

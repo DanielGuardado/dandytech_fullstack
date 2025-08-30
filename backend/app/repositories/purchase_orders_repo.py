@@ -258,11 +258,14 @@ class PurchaseOrdersRepo:
                     poi.receive_status, poi.updated_at,
                     cp.title AS product_title,
                     vt.code AS variant_type_code,
-                    vt.display_name AS variant_display_name
+                    vt.display_name AS variant_display_name,
+                    p.short_name AS platform_short_name
                 FROM dbo.PurchaseOrderItems poi
                 JOIN dbo.ListingVariants lv ON lv.variant_id = poi.variant_id
                 JOIN dbo.CatalogProducts cp ON cp.catalog_product_id = poi.catalog_product_id
                 JOIN dbo.VariantTypes vt ON vt.variant_type_id = lv.variant_type_id
+                LEFT JOIN dbo.CatalogProductGames cpg ON cpg.catalog_product_id = cp.catalog_product_id
+                LEFT JOIN dbo.Platforms p ON p.platform_id = cpg.platform_id
                 WHERE poi.purchase_order_id = :po
                 ORDER BY poi.purchase_order_item_id
             """),
@@ -286,6 +289,7 @@ class PurchaseOrdersRepo:
                 "product_title": r["product_title"],
                 "variant_type_code": r["variant_type_code"],
                 "variant_display_name": r["variant_display_name"],
+                "platform_short_name": r["platform_short_name"],
             }
             out.append(line_data)
         return out
