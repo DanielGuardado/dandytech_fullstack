@@ -11,12 +11,13 @@ interface AllocationDetails {
 interface VariantSelectPanelProps {
   variantTypes: VariantType[];
   availableVariants: ProductVariant[];
-  onVariantSelected: (variant: ProductVariant, allocation: AllocationDetails) => void;
+  onVariantSelected: (variant: ProductVariant, allocation: AllocationDetails | null) => void;
   onCreateVariant: (variantTypeId: number, defaultListPrice?: number) => void;
   currentLineItems: Array<{allocation_basis: number; quantity_expected: number; cost_assignment_method: string}>;
   loading: boolean;
   showCreateVariant: boolean;
   defaultVariantMode?: string;
+  mode?: 'purchase_order' | 'calculator';
 }
 
 const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
@@ -27,7 +28,8 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
   currentLineItems,
   loading,
   showCreateVariant,
-  defaultVariantMode
+  defaultVariantMode,
+  mode = 'purchase_order'
 }) => {
   // For creating new variants
   const [createMode, setCreateMode] = useState(showCreateVariant);
@@ -117,7 +119,15 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
   }, [selectedVariant, availableVariants, selectedVariantIndex]);
 
   const handleVariantSelect = (variant: ProductVariant) => {
-    console.log('Variant selected:', variant);
+    console.log('Variant selected:', variant, 'mode:', mode);
+    
+    if (mode === 'calculator') {
+      // In calculator mode, skip allocation form and go directly to pricing
+      onVariantSelected(variant, null);
+      return;
+    }
+    
+    // Purchase order mode: show allocation form
     setSelectedVariant(variant);
     // Reset allocation form
     setAllocationBasis('');

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { apiService } from '../services/api';
 import { calculatorService } from '../services/calculatorService';
 import { 
@@ -96,6 +96,14 @@ const PurchaseCalculator: React.FC = () => {
       try {
         setLoading(true);
         const sessionDetail = await calculatorService.getSession(session.session_id);
+        
+        // Debug logging to check if detailed fields are present on load
+        if (sessionDetail.items && sessionDetail.items.length > 0) {
+          console.log('DEBUG: Session load - First item data:', sessionDetail.items[0]);
+          console.log('DEBUG: Session load - base_variable_fee:', sessionDetail.items[0].base_variable_fee);
+          console.log('DEBUG: Session load - sales_tax:', sessionDetail.items[0].sales_tax);
+        }
+        
         setSessionData(sessionDetail);
         setSessionId(session.session_id);
         setItems(sessionDetail.items || []);
@@ -133,10 +141,8 @@ const PurchaseCalculator: React.FC = () => {
       setLoading(true);
       const newItem = await calculatorService.addItem(sessionId, itemData);
       
-      // Refresh session to get updated totals
-      const updatedSession = await calculatorService.getSession(sessionId);
-      setSessionData(updatedSession);
-      setItems(updatedSession.items || []);
+      // Add new item to state array instead of refetching entire session
+      setItems(prev => [...prev, newItem]);
       
       // Auto-scroll to new item
       setTimeout(() => {
@@ -146,7 +152,7 @@ const PurchaseCalculator: React.FC = () => {
         });
       }, 100);
       
-      setShowAddItemFlow(false);
+      // Keep the AddItemFlow open for continuous item addition - it will reset to search automatically
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add item');
     } finally {
@@ -159,12 +165,12 @@ const PurchaseCalculator: React.FC = () => {
     
     try {
       setLoading(true);
-      await calculatorService.updateItem(sessionId, itemId, updates);
+      const updatedItem = await calculatorService.updateItem(sessionId, itemId, updates);
       
-      // Refresh session to get updated calculations
-      const updatedSession = await calculatorService.getSession(sessionId);
-      setSessionData(updatedSession);
-      setItems(updatedSession.items || []);
+      // Update the specific item in the state array
+      setItems(prev => prev.map(item => 
+        item.item_id === itemId ? updatedItem : item
+      ));
       
       setEditingItemId(null);
       setEditingItemData(null);
@@ -182,10 +188,8 @@ const PurchaseCalculator: React.FC = () => {
       setLoading(true);
       await calculatorService.deleteItem(sessionId, itemId);
       
-      // Refresh session to get updated totals
-      const updatedSession = await calculatorService.getSession(sessionId);
-      setSessionData(updatedSession);
-      setItems(updatedSession.items || []);
+      // Remove the item from the state array
+      setItems(prev => prev.filter(item => item.item_id !== itemId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete item');
     } finally {
@@ -218,6 +222,32 @@ const PurchaseCalculator: React.FC = () => {
 
   const canAddItems = sessionData?.status !== 'converted_to_po';
   const canConvert = calculatorService.canConvertToPO(sessionData || {} as CalculatorSession);
+
+  // Calculate session totals from items for dynamic updates
+  const calculatedTotals = useMemo(() => {
+    if (!items.length) {
+      return {
+        total_items: 0,
+        total_market_value: 0,
+        total_estimated_revenue: 0,
+        total_purchase_price: 0,
+        expected_profit: 0,
+        expected_profit_margin: 0,
+        average_percent_of_market: 0,
+        average_roi: 0
+      };
+    }
+    return calculatorService.calculateSessionTotals(items);
+  }, [items]);
+
+  // Create dynamic session data with calculated totals
+  const dynamicSessionData = useMemo(() => {
+    if (!sessionData) return null;
+    return {
+      ...sessionData,
+      ...calculatedTotals
+    };
+  }, [sessionData, calculatedTotals]);
 
   return (
     <div style={{ 
@@ -279,11 +309,11 @@ const PurchaseCalculator: React.FC = () => {
           </span>
           
           {/* Status Indicator */}
-          {sessionData && (
+          {dynamicSessionData && (
             <div style={{
               background: 
-                sessionData.status === 'converted_to_po' ? '#dc3545' :
-                sessionData.status === 'finalized' ? '#28a745' : '#007bff',
+                dynamicSessionData.status === 'converted_to_po' ? '#dc3545' :
+                dynamicSessionData.status === 'finalized' ? '#28a745' : '#007bff',
               color: 'white',
               padding: '1px 6px',
               borderRadius: '8px',
@@ -291,8 +321,8 @@ const PurchaseCalculator: React.FC = () => {
               fontWeight: 'bold',
               textTransform: 'uppercase'
             }}>
-              {sessionData.status === 'converted_to_po' ? 'Converted' :
-               sessionData.status === 'finalized' ? 'Finalized' : 'Draft'}
+              {dynamicSessionData.status === 'converted_to_po' ? 'Converted' :
+               dynamicSessionData.status === 'finalized' ? 'Finalized' : 'Draft'}
             </div>
           )}
         </div>
@@ -303,8 +333,8 @@ const PurchaseCalculator: React.FC = () => {
           color: '#6c757d',
           fontFamily: 'monospace'
         }}>
-          {sessionData ? (
-            `${sessionData.total_items} items | Revenue: ${calculatorService.formatCurrency(sessionData.total_estimated_revenue || 0)} | Profit: ${calculatorService.formatPercentage(sessionData.expected_profit_margin || 0)}`
+          {dynamicSessionData ? (
+            `${dynamicSessionData.total_items} items | Revenue: ${calculatorService.formatCurrency(dynamicSessionData.total_estimated_revenue || 0)} | Profit: ${calculatorService.formatPercentage(dynamicSessionData.expected_profit_margin || 0)}`
           ) : (
             'No session selected'
           )}
@@ -403,7 +433,7 @@ const PurchaseCalculator: React.FC = () => {
             flexDirection: 'column',
             gap: '12px'
           }}>
-            {sessionData ? (
+            {dynamicSessionData ? (
               <>
                 {/* Session Info */}
                 <div>
@@ -418,52 +448,88 @@ const PurchaseCalculator: React.FC = () => {
                     borderRadius: '4px',
                     border: '1px solid #dee2e6'
                   }}>
-                    {sessionData.session_name || 'Unnamed Session'}
+                    {dynamicSessionData.session_name || 'Unnamed Session'}
                   </div>
                 </div>
 
-                {/* Summary Stats */}
+                {/* Estimated Summary Stats */}
                 <div>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: '#495057' }}>
-                    Summary
+                    Estimated Summary
                   </h4>
                   
                   <div style={{ display: 'grid', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e9ecef' }}>
                       <span style={{ fontSize: '12px', color: '#6c757d' }}>Items:</span>
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace' }}>{sessionData.total_items}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace' }}>{dynamicSessionData.total_items}</span>
                     </div>
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e9ecef' }}>
                       <span style={{ fontSize: '12px', color: '#6c757d' }}>Market Value:</span>
                       <span style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace', color: '#007bff' }}>
-                        {calculatorService.formatCurrency(sessionData.total_market_value || 0)}
+                        {calculatorService.formatCurrency(dynamicSessionData.total_market_value || 0)}
                       </span>
                     </div>
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e9ecef' }}>
-                      <span style={{ fontSize: '12px', color: '#6c757d' }}>Est. Revenue:</span>
+                      <span style={{ fontSize: '12px', color: '#6c757d' }}>Revenue:</span>
                       <span style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace', color: '#28a745' }}>
-                        {calculatorService.formatCurrency(sessionData.total_estimated_revenue || 0)}
+                        {calculatorService.formatCurrency(dynamicSessionData.total_estimated_revenue || 0)}
                       </span>
                     </div>
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e9ecef' }}>
                       <span style={{ fontSize: '12px', color: '#6c757d' }}>Max Purchase:</span>
                       <span style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace', color: '#dc3545' }}>
-                        {calculatorService.formatCurrency(sessionData.total_purchase_price || 0)}
+                        {calculatorService.formatCurrency(dynamicSessionData.total_purchase_price || 0)}
                       </span>
                     </div>
                     
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e9ecef' }}>
+                      <span style={{ fontSize: '12px', color: '#6c757d' }}>Total Expected Profit:</span>
+                      <span style={{ 
+                        fontSize: '12px', 
+                        fontWeight: 'bold', 
+                        fontFamily: 'monospace',
+                        color: (dynamicSessionData.expected_profit || 0) >= 0 ? '#28a745' : '#dc3545'
+                      }}>
+                        {calculatorService.formatCurrency(dynamicSessionData.expected_profit || 0)}
+                      </span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e9ecef' }}>
                       <span style={{ fontSize: '12px', color: '#6c757d' }}>Profit Margin:</span>
                       <span style={{ 
                         fontSize: '12px', 
                         fontWeight: 'bold', 
                         fontFamily: 'monospace',
-                        color: calculatorService.getProfitMarginColor(sessionData.expected_profit_margin || 0)
+                        color: calculatorService.getProfitMarginColor(dynamicSessionData.expected_profit_margin || 0)
                       }}>
-                        {calculatorService.formatPercentage(sessionData.expected_profit_margin || 0)}
+                        {calculatorService.formatPercentage(dynamicSessionData.expected_profit_margin || 0)}
+                      </span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e9ecef' }}>
+                      <span style={{ fontSize: '12px', color: '#6c757d' }}>Avg % of Market:</span>
+                      <span style={{ 
+                        fontSize: '12px', 
+                        fontWeight: 'bold', 
+                        fontFamily: 'monospace',
+                        color: (dynamicSessionData.average_percent_of_market || 0) <= 80 ? '#28a745' : '#ffc107'
+                      }}>
+                        {calculatorService.formatPercentage(dynamicSessionData.average_percent_of_market || 0)}
+                      </span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                      <span style={{ fontSize: '12px', color: '#6c757d' }}>Avg ROI:</span>
+                      <span style={{ 
+                        fontSize: '12px', 
+                        fontWeight: 'bold', 
+                        fontFamily: 'monospace',
+                        color: calculatorService.getProfitMarginColor(dynamicSessionData.average_roi || 0, 30)
+                      }}>
+                        {calculatorService.formatPercentage(dynamicSessionData.average_roi || 0)}
                       </span>
                     </div>
                   </div>
@@ -546,8 +612,8 @@ const PurchaseCalculator: React.FC = () => {
               </h3>
               <div style={{ fontSize: '12px', color: '#6c757d', marginTop: '2px' }}>
                 {items.length} {items.length === 1 ? 'item' : 'items'}
-                {sessionData && sessionData.total_estimated_revenue && (
-                  <span> | Revenue: {calculatorService.formatCurrency(sessionData.total_estimated_revenue)}</span>
+                {dynamicSessionData && dynamicSessionData.total_estimated_revenue && (
+                  <span> | Revenue: {calculatorService.formatCurrency(dynamicSessionData.total_estimated_revenue)}</span>
                 )}
               </div>
             </div>
@@ -619,9 +685,9 @@ const PurchaseCalculator: React.FC = () => {
       </div>
 
       {/* Convert to PO Modal */}
-      {showConvertModal && sessionData && (
+      {showConvertModal && dynamicSessionData && (
         <ConvertToPOModal 
-          session={sessionData}
+          session={dynamicSessionData}
           sources={sources}
           onConvert={handleConvertToPO}
           onCancel={() => setShowConvertModal(false)}

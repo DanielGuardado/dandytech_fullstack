@@ -65,7 +65,17 @@ class PurchaseCalculatorService:
         if not session:
             raise AppError("Session not found", 404)
         
+        # Platform info now comes from CatalogProductGames JOIN - no need to fix missing platform_ids
+        
         items = self.repo.get_session_items(session_id)
+        
+        # Debug logging to check what's being returned
+        if items:
+            print(f"DEBUG SERVICE: First item keys: {list(items[0].keys())}")
+            print(f"DEBUG SERVICE: sales_tax = {items[0].get('sales_tax')}")
+            print(f"DEBUG SERVICE: base_variable_fee = {items[0].get('base_variable_fee')}")
+            print(f"DEBUG SERVICE: platform_short_name = {items[0].get('platform_short_name')}")
+        
         session["items"] = items
         return session
 
@@ -131,8 +141,13 @@ class PurchaseCalculatorService:
         # Update session totals
         self._recalculate_session_totals(session_id)
         
+        # Commit the transaction first
         self.db.commit()
-        return created_item
+        
+        # Fetch the complete item with platform information from JOIN after commit
+        complete_item = self.repo.get_item(created_item['item_id'])
+        
+        return complete_item
 
     def update_item(self, session_id: int, item_id: int, updates: Dict) -> Dict:
         """Update calculator item"""
@@ -306,7 +321,9 @@ class PurchaseCalculatorService:
                 
                 # Enrich with product data
                 enriched["product_title"] = ctx.get("title", "")
-                enriched["platform_id"] = ctx.get("platform_id")
+                
+                # Platform info now comes from CatalogProductGames JOIN - no need to set platform_id
+                
                 enriched["variant_type_code"] = variant_ctx.get("variant_type_code", "")
                 
                 print(f"DEBUG: enriched market_price before PC lookup: {enriched.get('market_price')}")
@@ -325,11 +342,16 @@ class PurchaseCalculatorService:
                 print(f"DEBUG: Exception in context lookup: {e}")
                 pass
         
-        # Get platform markup if platform_id is available
-        if enriched.get("platform_id") and not enriched.get("markup_amount"):
+        # Get platform markup if catalog_product_id is available and no markup provided
+        if enriched.get("catalog_product_id") and not enriched.get("markup_amount"):
             platform_row = self.db.execute(
-                text("SELECT default_markup FROM dbo.Platforms WHERE platform_id = :id"),
-                {"id": enriched["platform_id"]}
+                text("""
+                    SELECT p.default_markup 
+                    FROM dbo.Platforms p
+                    JOIN dbo.CatalogProductGames cpg ON p.platform_id = cpg.platform_id
+                    WHERE cpg.catalog_product_id = :id
+                """),
+                {"id": enriched["catalog_product_id"]}
             ).scalar()
             if platform_row:
                 enriched["markup_amount"] = float(platform_row)
@@ -470,6 +492,7 @@ class PurchaseCalculatorService:
         variant_code = item_data.get("variant_type_code", "").upper()
         console_variants = ["CONSOLE", "SYSTEM", "HARDWARE"]
         return any(cv in variant_code for cv in console_variants)
+
 
     def _recalculate_session_totals(self, session_id: int) -> None:
         """Recalculate and update session totals"""

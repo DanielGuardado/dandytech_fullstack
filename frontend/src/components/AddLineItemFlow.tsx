@@ -89,7 +89,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   // Calculator mode state
   const [selectedVariantForCalculator, setSelectedVariantForCalculator] = useState<ProductVariant | null>(null);
 
-  const handleVariantSelected = (variant: ProductVariant, allocation?: AllocationDetails) => {
+  const handleVariantSelected = (variant: ProductVariant, allocation: AllocationDetails | null) => {
     console.log('AddLineItemFlow - Variant selected:', {
       source: 'handleVariantSelected',
       mode: mode,
@@ -503,6 +503,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           loading={loading}
           showCreateVariant={true}
           defaultVariantMode={internalDefaultVariantMode}
+          mode={mode}
         />
       )}
 
@@ -516,6 +517,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           loading={loading}
           showCreateVariant={false}
           defaultVariantMode={internalDefaultVariantMode}
+          mode={mode}
         />
       )}
 

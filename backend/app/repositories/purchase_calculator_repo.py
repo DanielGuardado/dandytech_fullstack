@@ -209,11 +209,11 @@ class PurchaseCalculatorRepo:
     def add_item(self, session_id: int, item_data: Dict) -> Dict:
         """Add item to calculator session"""
         # Prepare parameters, ensuring all required fields have values
+        # Note: platform_id removed - platform info comes from CatalogProductGames JOIN
         params = {
             "session_id": session_id,
             "catalog_product_id": item_data.get("catalog_product_id"),
             "variant_id": item_data.get("variant_id"),
-            "platform_id": item_data.get("platform_id"),
             "product_title": item_data.get("product_title", ""),
             "variant_type_code": item_data.get("variant_type_code", ""),
             "pricecharting_id": item_data.get("pricecharting_id"),
@@ -246,7 +246,7 @@ class PurchaseCalculatorRepo:
         result = self.db.execute(
             text("""
                 INSERT INTO dbo.PurchaseCalculatorItems (
-                    session_id, catalog_product_id, variant_id, platform_id, product_title,
+                    session_id, catalog_product_id, variant_id, product_title,
                     variant_type_code, pricecharting_id, market_price, override_price,
                     final_base_price, cost_source, markup_amount, estimated_sale_price,
                     total_fees, net_after_fees, target_profit_percentage, calculated_purchase_price,
@@ -256,7 +256,7 @@ class PurchaseCalculatorRepo:
                     regular_cashback, shipping_cashback, total_cashback
                 )
                 OUTPUT INSERTED.item_id, INSERTED.session_id, INSERTED.catalog_product_id,
-                       INSERTED.variant_id, INSERTED.platform_id, INSERTED.product_title,
+                       INSERTED.variant_id, INSERTED.product_title,
                        INSERTED.variant_type_code, INSERTED.pricecharting_id, INSERTED.market_price,
                        INSERTED.override_price, INSERTED.final_base_price, INSERTED.cost_source,
                        INSERTED.markup_amount, INSERTED.estimated_sale_price, INSERTED.total_fees,
@@ -268,7 +268,7 @@ class PurchaseCalculatorRepo:
                        INSERTED.supplies_cost, INSERTED.regular_cashback, INSERTED.shipping_cashback,
                        INSERTED.total_cashback
                 VALUES (
-                    :session_id, :catalog_product_id, :variant_id, :platform_id, :product_title,
+                    :session_id, :catalog_product_id, :variant_id, :product_title,
                     :variant_type_code, :pricecharting_id, :market_price, :override_price,
                     :final_base_price, :cost_source, :markup_amount, :estimated_sale_price,
                     :total_fees, :net_after_fees, :target_profit_percentage, :calculated_purchase_price,
@@ -283,20 +283,23 @@ class PurchaseCalculatorRepo:
         return dict(result)
 
     def get_session_items(self, session_id: int) -> List[Dict]:
-        """Get all items for a session with platform details"""
+        """Get all items for a session with platform details from CatalogProductGames JOIN"""
         rows = self.db.execute(
             text("""
-                SELECT i.item_id, i.session_id, i.catalog_product_id, i.variant_id, i.platform_id,
+                SELECT i.item_id, i.session_id, i.catalog_product_id, i.variant_id,
                        i.product_title, i.variant_type_code, i.pricecharting_id, i.market_price,
                        i.override_price, i.final_base_price, i.cost_source, i.markup_amount,
                        i.estimated_sale_price, i.total_fees, i.net_after_fees,
                        i.target_profit_percentage, i.calculated_purchase_price, i.quantity,
-                       i.notes, i.created_at, p.name as platform_name, p.short_name as platform_short_name,
+                       i.notes, i.created_at,
+                       p.name as platform_name, 
+                       p.short_name as platform_short_name,
                        i.sales_tax, i.final_value, i.base_variable_fee, i.discounted_variable_fee,
                        i.transaction_fee, i.ad_fee, i.shipping_cost, i.supplies_cost,
                        i.regular_cashback, i.shipping_cashback, i.total_cashback
                 FROM dbo.PurchaseCalculatorItems i
-                LEFT JOIN dbo.Platforms p ON i.platform_id = p.platform_id
+                LEFT JOIN dbo.CatalogProductGames cpg ON cpg.catalog_product_id = i.catalog_product_id
+                LEFT JOIN dbo.Platforms p ON p.platform_id = cpg.platform_id
                 WHERE i.session_id = :session_id
                 ORDER BY i.created_at ASC
             """),
@@ -339,20 +342,23 @@ class PurchaseCalculatorRepo:
         return self.get_item(item_id)
 
     def get_item(self, item_id: int) -> Optional[Dict]:
-        """Get single calculator item with platform details"""
+        """Get single calculator item with platform details from CatalogProductGames JOIN"""
         row = self.db.execute(
             text("""
-                SELECT i.item_id, i.session_id, i.catalog_product_id, i.variant_id, i.platform_id,
+                SELECT i.item_id, i.session_id, i.catalog_product_id, i.variant_id,
                        i.product_title, i.variant_type_code, i.pricecharting_id, i.market_price,
                        i.override_price, i.final_base_price, i.cost_source, i.markup_amount,
                        i.estimated_sale_price, i.total_fees, i.net_after_fees,
                        i.target_profit_percentage, i.calculated_purchase_price, i.quantity,
-                       i.notes, i.created_at, p.name as platform_name, p.short_name as platform_short_name,
+                       i.notes, i.created_at,
+                       p.name as platform_name, 
+                       p.short_name as platform_short_name,
                        i.sales_tax, i.final_value, i.base_variable_fee, i.discounted_variable_fee,
                        i.transaction_fee, i.ad_fee, i.shipping_cost, i.supplies_cost,
                        i.regular_cashback, i.shipping_cashback, i.total_cashback
                 FROM dbo.PurchaseCalculatorItems i
-                LEFT JOIN dbo.Platforms p ON i.platform_id = p.platform_id
+                LEFT JOIN dbo.CatalogProductGames cpg ON cpg.catalog_product_id = i.catalog_product_id
+                LEFT JOIN dbo.Platforms p ON p.platform_id = cpg.platform_id
                 WHERE i.item_id = :item_id
             """),
             {"item_id": item_id}

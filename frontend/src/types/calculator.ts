@@ -60,7 +60,6 @@ export interface CalculatorItem {
   session_id: number;
   catalog_product_id?: number;
   variant_id?: number;
-  platform_id?: number;
   product_title?: string;
   variant_type_code?: string;
   pricecharting_id?: string;
@@ -104,7 +103,6 @@ export interface CalculatorItem {
 export interface CalculatorItemCreate {
   catalog_product_id?: number;
   variant_id?: number;
-  platform_id?: number;
   product_title?: string;
   variant_type_code?: string;
   pricecharting_id?: string;

@@ -227,6 +227,87 @@ class CalculatorService {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return sourceName ? `${sourceName} - ${date} ${time}` : `Session - ${date} ${time}`;
   }
+
+  /**
+   * Calculate average percentage of market value across items
+   */
+  calculateAveragePercentOfMarket(items: CalculatorItem[]): number {
+    const validItems = items.filter(item => 
+      item.market_price && item.market_price > 0 && item.calculated_purchase_price && item.calculated_purchase_price > 0
+    );
+    
+    if (validItems.length === 0) return 0;
+    
+    const percentages = validItems.map(item => {
+      const marketPrice = item.market_price || 0;
+      const purchasePrice = item.calculated_purchase_price || 0;
+      return (purchasePrice / marketPrice) * 100;
+    });
+    
+    const totalPercent = percentages.reduce((sum, percent) => sum + percent, 0);
+    return totalPercent / percentages.length;
+  }
+
+  /**
+   * Calculate average ROI across items
+   */
+  calculateAverageROI(items: CalculatorItem[]): number {
+    const validItems = items.filter(item => 
+      item.net_after_fees && item.calculated_purchase_price && item.calculated_purchase_price > 0
+    );
+    
+    if (validItems.length === 0) return 0;
+    
+    const rois = validItems.map(item => 
+      this.calculateROIFromNet(item.net_after_fees || 0, item.calculated_purchase_price || 0)
+    );
+    
+    const totalROI = rois.reduce((sum, roi) => sum + roi, 0);
+    return totalROI / rois.length;
+  }
+
+  /**
+   * Calculate session totals from items array (for dynamic updates)
+   */
+  calculateSessionTotals(items: CalculatorItem[]): {
+    total_items: number;
+    total_market_value: number;
+    total_estimated_revenue: number;
+    total_purchase_price: number;
+    expected_profit: number;
+    expected_profit_margin: number;
+    average_percent_of_market: number;
+    average_roi: number;
+  } {
+    const total_items = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const total_market_value = items.reduce((sum, item) => 
+      sum + ((item.market_price || item.final_base_price || 0) * (item.quantity || 1)), 0
+    );
+    const total_estimated_revenue = items.reduce((sum, item) => 
+      sum + ((item.net_after_fees || 0) * (item.quantity || 1)), 0
+    );
+    const total_purchase_price = items.reduce((sum, item) => 
+      sum + ((item.calculated_purchase_price || 0) * (item.quantity || 1)), 0
+    );
+    const expected_profit = total_estimated_revenue - total_purchase_price;
+    const expected_profit_margin = total_estimated_revenue > 0 
+      ? (expected_profit / total_estimated_revenue) * 100 
+      : 0;
+
+    const average_percent_of_market = this.calculateAveragePercentOfMarket(items);
+    const average_roi = this.calculateAverageROI(items);
+
+    return {
+      total_items,
+      total_market_value,
+      total_estimated_revenue,
+      total_purchase_price,
+      expected_profit,
+      expected_profit_margin,
+      average_percent_of_market,
+      average_roi
+    };
+  }
 }
 
 export const calculatorService = new CalculatorService();

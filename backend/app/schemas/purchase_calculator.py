@@ -56,7 +56,6 @@ class CalculatorSessionDetail(CalculatorSession):
 class CalculatorItemCreate(BaseModel):
     catalog_product_id: Optional[int] = None
     variant_id: Optional[int] = None
-    platform_id: Optional[int] = None
     product_title: Optional[str] = None
     variant_type_code: Optional[str] = None
     pricecharting_id: Optional[str] = None
@@ -75,11 +74,12 @@ class CalculatorItemUpdate(BaseModel):
     notes: Optional[str] = None
 
 class CalculatorItem(BaseModel):
+    model_config = {"from_attributes": True}
+    
     item_id: int
     session_id: int
     catalog_product_id: Optional[int] = None
     variant_id: Optional[int] = None
-    platform_id: Optional[int] = None
     product_title: Optional[str] = None
     variant_type_code: Optional[str] = None
     pricecharting_id: Optional[str] = None
@@ -96,6 +96,19 @@ class CalculatorItem(BaseModel):
     quantity: int = 1
     notes: Optional[str] = None
     created_at: datetime
+    
+    # Detailed calculation breakdown fields
+    sales_tax: Optional[float] = None
+    final_value: Optional[float] = None
+    base_variable_fee: Optional[float] = None
+    discounted_variable_fee: Optional[float] = None
+    transaction_fee: Optional[float] = None
+    ad_fee: Optional[float] = None
+    shipping_cost: Optional[float] = None
+    supplies_cost: Optional[float] = None
+    regular_cashback: Optional[float] = None
+    shipping_cashback: Optional[float] = None
+    total_cashback: Optional[float] = None
     
     # Additional fields for UI display
     platform_name: Optional[str] = None

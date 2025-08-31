@@ -185,7 +185,6 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
     const itemData: CalculatorItemCreate = {
       catalog_product_id: undefined, // Will be set by parent
       variant_id: selectedVariant.variant_id,
-      platform_id: undefined, // Will be determined from context
       product_title: productTitle,
       variant_type_code: selectedVariant.variant_type_code,
       market_price: marketPrice && parseFloat(marketPrice) > 0 ? parseFloat(marketPrice) : undefined,
@@ -232,187 +231,193 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
         display: 'flex', 
         flexDirection: 'column',
         padding: '12px',
-        gap: '12px',
+        gap: '8px',
         overflow: 'auto'
       }}>
         
-        {/* Market Price */}
-        <div>
-          <label style={{ 
-            display: 'block', 
-            fontSize: '12px', 
-            fontWeight: 'bold', 
-            color: '#6c757d', 
-            marginBottom: '4px',
-            textTransform: 'uppercase'
-          }}>
-            Market Price *
-          </label>
-          <input
-            ref={marketPriceRef}
-            type="number"
-            step="0.01"
-            min="0"
-            value={marketPrice}
-            onChange={(e) => setMarketPrice(e.target.value)}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid #dee2e6',
-              borderRadius: '4px',
-              fontSize: '14px',
-              textAlign: 'right',
-              fontFamily: 'monospace'
-            }}
-            {...addFocusHandlers()}
-            required
-          />
-        </div>
-
-        {/* Override Price */}
-        <div>
-          <label style={{ 
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '12px', 
-            fontWeight: 'bold', 
-            color: '#6c757d', 
-            marginBottom: '4px',
-            textTransform: 'uppercase'
-          }}>
+        {/* Row 1: Market Price | Override Price */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {/* Market Price */}
+          <div style={{ flex: 1 }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '12px', 
+              fontWeight: 'bold', 
+              color: '#6c757d', 
+              marginBottom: '4px',
+              textTransform: 'uppercase'
+            }}>
+              Market Price *
+            </label>
             <input
-              type="checkbox"
-              checked={useOverride}
-              onChange={(e) => setUseOverride(e.target.checked)}
+              ref={marketPriceRef}
+              type="number"
+              step="0.01"
+              min="0"
+              value={marketPrice}
+              onChange={(e) => setMarketPrice(e.target.value)}
               disabled={loading}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                fontSize: '14px',
+                textAlign: 'right',
+                fontFamily: 'monospace'
+              }}
+              {...addFocusHandlers()}
+              required
             />
-            Override Price
-          </label>
-          <input
-            ref={overridePriceRef}
-            type="number"
-            step="0.01"
-            min="0"
-            value={overridePrice}
-            onChange={(e) => setOverridePrice(e.target.value)}
-            disabled={loading || !useOverride}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid #dee2e6',
-              borderRadius: '4px',
-              fontSize: '14px',
-              textAlign: 'right',
-              fontFamily: 'monospace',
-              opacity: useOverride ? 1 : 0.6
-            }}
-            {...addFocusHandlers()}
-          />
+          </div>
+
+          {/* Override Price */}
+          <div style={{ flex: 1 }}>
+            <label style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '12px', 
+              fontWeight: 'bold', 
+              color: '#6c757d', 
+              marginBottom: '4px',
+              textTransform: 'uppercase'
+            }}>
+              <input
+                type="checkbox"
+                checked={useOverride}
+                onChange={(e) => setUseOverride(e.target.checked)}
+                disabled={loading}
+              />
+              Override Price
+            </label>
+            <input
+              ref={overridePriceRef}
+              type="number"
+              step="0.01"
+              min="0"
+              value={overridePrice}
+              onChange={(e) => setOverridePrice(e.target.value)}
+              disabled={loading || !useOverride}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                fontSize: '14px',
+                textAlign: 'right',
+                fontFamily: 'monospace',
+                opacity: useOverride ? 1 : 0.6
+              }}
+              {...addFocusHandlers()}
+            />
+          </div>
         </div>
 
-        {/* Markup Amount */}
-        <div>
-          <label style={{ 
-            display: 'block', 
-            fontSize: '12px', 
-            fontWeight: 'bold', 
-            color: '#6c757d', 
-            marginBottom: '4px',
-            textTransform: 'uppercase'
-          }}>
-            Markup Amount *
-          </label>
-          <input
-            ref={markupRef}
-            type="number"
-            step="0.01"
-            min="0"
-            value={markupAmount}
-            onChange={(e) => setMarkupAmount(e.target.value)}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid #dee2e6',
-              borderRadius: '4px',
-              fontSize: '14px',
-              textAlign: 'right',
-              fontFamily: 'monospace'
-            }}
-            {...addFocusHandlers()}
-            required
-          />
+        {/* Row 2: Markup | Target Profit | Quantity */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {/* Markup Amount */}
+          <div style={{ flex: 1 }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '12px', 
+              fontWeight: 'bold', 
+              color: '#6c757d', 
+              marginBottom: '4px',
+              textTransform: 'uppercase'
+            }}>
+              Markup *
+            </label>
+            <input
+              ref={markupRef}
+              type="number"
+              step="0.01"
+              min="0"
+              value={markupAmount}
+              onChange={(e) => setMarkupAmount(e.target.value)}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                fontSize: '14px',
+                textAlign: 'right',
+                fontFamily: 'monospace'
+              }}
+              {...addFocusHandlers()}
+              required
+            />
+          </div>
+
+          {/* Target Profit Percentage */}
+          <div style={{ flex: 1 }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '12px', 
+              fontWeight: 'bold', 
+              color: '#6c757d', 
+              marginBottom: '4px',
+              textTransform: 'uppercase'
+            }}>
+              Target % *
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              value={targetProfitPercentage}
+              onChange={(e) => setTargetProfitPercentage(e.target.value)}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                fontSize: '14px',
+                textAlign: 'right',
+                fontFamily: 'monospace'
+              }}
+              {...addFocusHandlers()}
+              required
+            />
+          </div>
+
+          {/* Quantity */}
+          <div style={{ flex: 1 }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '12px', 
+              fontWeight: 'bold', 
+              color: '#6c757d', 
+              marginBottom: '4px',
+              textTransform: 'uppercase'
+            }}>
+              Qty *
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                fontSize: '14px',
+                textAlign: 'right',
+                fontFamily: 'monospace'
+              }}
+              {...addFocusHandlers()}
+              required
+            />
+          </div>
         </div>
 
-        {/* Target Profit Percentage */}
-        <div>
-          <label style={{ 
-            display: 'block', 
-            fontSize: '12px', 
-            fontWeight: 'bold', 
-            color: '#6c757d', 
-            marginBottom: '4px',
-            textTransform: 'uppercase'
-          }}>
-            Target Profit % *
-          </label>
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            max="100"
-            value={targetProfitPercentage}
-            onChange={(e) => setTargetProfitPercentage(e.target.value)}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid #dee2e6',
-              borderRadius: '4px',
-              fontSize: '14px',
-              textAlign: 'right',
-              fontFamily: 'monospace'
-            }}
-            {...addFocusHandlers()}
-            required
-          />
-        </div>
-
-        {/* Quantity */}
-        <div>
-          <label style={{ 
-            display: 'block', 
-            fontSize: '12px', 
-            fontWeight: 'bold', 
-            color: '#6c757d', 
-            marginBottom: '4px',
-            textTransform: 'uppercase'
-          }}>
-            Quantity *
-          </label>
-          <input
-            type="number"
-            min="1"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid #dee2e6',
-              borderRadius: '4px',
-              fontSize: '14px',
-              textAlign: 'right',
-              fontFamily: 'monospace'
-            }}
-            {...addFocusHandlers()}
-            required
-          />
-        </div>
-
-        {/* Notes */}
+        {/* Row 3: Notes (full width) */}
         <div>
           <label style={{ 
             display: 'block', 
