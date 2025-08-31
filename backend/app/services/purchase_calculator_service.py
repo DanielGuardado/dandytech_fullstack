@@ -66,17 +66,6 @@ class PurchaseCalculatorService:
             raise AppError("Session not found", 404)
         
         items = self.repo.get_session_items(session_id)
-        
-        # Add detailed calculation breakdown to each item
-        for item in items:
-            if item.get("market_price") or item.get("override_price"):
-                detailed_calcs = self._calculate_item_pricing(item)
-                item.update({k: v for k, v in detailed_calcs.items() 
-                           if k in ['sales_tax', 'final_value', 'base_variable_fee', 
-                                   'discounted_variable_fee', 'transaction_fee', 'ad_fee', 
-                                   'shipping_cost', 'supplies_cost', 'regular_cashback', 
-                                   'shipping_cashback', 'total_cashback']})
-        
         session["items"] = items
         return session
 
@@ -136,22 +125,8 @@ class PurchaseCalculatorService:
         calculated_item = self._calculate_item_pricing(validated_item)
         print(f"DEBUG: Calculated item: {calculated_item}")
         
-        # Extract database fields (exclude detailed calculation fields)
-        db_fields = {k: v for k, v in calculated_item.items() 
-                    if k not in ['sales_tax', 'final_value', 'base_variable_fee', 
-                                'discounted_variable_fee', 'transaction_fee', 'ad_fee', 
-                                'shipping_cost', 'supplies_cost', 'regular_cashback', 
-                                'shipping_cashback', 'total_cashback']}
-        
-        # Add to database
-        created_item = self.repo.add_item(session_id, db_fields)
-        
-        # Add detailed calculation fields back for response
-        created_item.update({k: v for k, v in calculated_item.items() 
-                           if k in ['sales_tax', 'final_value', 'base_variable_fee', 
-                                   'discounted_variable_fee', 'transaction_fee', 'ad_fee', 
-                                   'shipping_cost', 'supplies_cost', 'regular_cashback', 
-                                   'shipping_cashback', 'total_cashback']})
+        # Save all fields including detailed calculation breakdown
+        created_item = self.repo.add_item(session_id, calculated_item)
         
         # Update session totals
         self._recalculate_session_totals(session_id)

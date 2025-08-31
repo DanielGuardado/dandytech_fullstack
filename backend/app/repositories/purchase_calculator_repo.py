@@ -228,7 +228,19 @@ class PurchaseCalculatorRepo:
             "target_profit_percentage": item_data.get("target_profit_percentage", 25.0),
             "calculated_purchase_price": item_data.get("calculated_purchase_price"),
             "quantity": item_data.get("quantity", 1),
-            "notes": item_data.get("notes")
+            "notes": item_data.get("notes"),
+            # Detailed calculation fields
+            "sales_tax": item_data.get("sales_tax"),
+            "final_value": item_data.get("final_value"),
+            "base_variable_fee": item_data.get("base_variable_fee"),
+            "discounted_variable_fee": item_data.get("discounted_variable_fee"),
+            "transaction_fee": item_data.get("transaction_fee"),
+            "ad_fee": item_data.get("ad_fee"),
+            "shipping_cost": item_data.get("shipping_cost"),
+            "supplies_cost": item_data.get("supplies_cost"),
+            "regular_cashback": item_data.get("regular_cashback"),
+            "shipping_cashback": item_data.get("shipping_cashback"),
+            "total_cashback": item_data.get("total_cashback")
         }
         
         result = self.db.execute(
@@ -238,7 +250,10 @@ class PurchaseCalculatorRepo:
                     variant_type_code, pricecharting_id, market_price, override_price,
                     final_base_price, cost_source, markup_amount, estimated_sale_price,
                     total_fees, net_after_fees, target_profit_percentage, calculated_purchase_price,
-                    quantity, notes
+                    quantity, notes,
+                    sales_tax, final_value, base_variable_fee, discounted_variable_fee,
+                    transaction_fee, ad_fee, shipping_cost, supplies_cost,
+                    regular_cashback, shipping_cashback, total_cashback
                 )
                 OUTPUT INSERTED.item_id, INSERTED.session_id, INSERTED.catalog_product_id,
                        INSERTED.variant_id, INSERTED.platform_id, INSERTED.product_title,
@@ -247,13 +262,20 @@ class PurchaseCalculatorRepo:
                        INSERTED.markup_amount, INSERTED.estimated_sale_price, INSERTED.total_fees,
                        INSERTED.net_after_fees, INSERTED.target_profit_percentage,
                        INSERTED.calculated_purchase_price, INSERTED.quantity, INSERTED.notes,
-                       INSERTED.created_at
+                       INSERTED.created_at, INSERTED.sales_tax, INSERTED.final_value,
+                       INSERTED.base_variable_fee, INSERTED.discounted_variable_fee,
+                       INSERTED.transaction_fee, INSERTED.ad_fee, INSERTED.shipping_cost,
+                       INSERTED.supplies_cost, INSERTED.regular_cashback, INSERTED.shipping_cashback,
+                       INSERTED.total_cashback
                 VALUES (
                     :session_id, :catalog_product_id, :variant_id, :platform_id, :product_title,
                     :variant_type_code, :pricecharting_id, :market_price, :override_price,
                     :final_base_price, :cost_source, :markup_amount, :estimated_sale_price,
                     :total_fees, :net_after_fees, :target_profit_percentage, :calculated_purchase_price,
-                    :quantity, :notes
+                    :quantity, :notes,
+                    :sales_tax, :final_value, :base_variable_fee, :discounted_variable_fee,
+                    :transaction_fee, :ad_fee, :shipping_cost, :supplies_cost,
+                    :regular_cashback, :shipping_cashback, :total_cashback
                 )
             """),
             params
@@ -269,7 +291,10 @@ class PurchaseCalculatorRepo:
                        i.override_price, i.final_base_price, i.cost_source, i.markup_amount,
                        i.estimated_sale_price, i.total_fees, i.net_after_fees,
                        i.target_profit_percentage, i.calculated_purchase_price, i.quantity,
-                       i.notes, i.created_at, p.name as platform_name, p.short_name as platform_short_name
+                       i.notes, i.created_at, p.name as platform_name, p.short_name as platform_short_name,
+                       i.sales_tax, i.final_value, i.base_variable_fee, i.discounted_variable_fee,
+                       i.transaction_fee, i.ad_fee, i.shipping_cost, i.supplies_cost,
+                       i.regular_cashback, i.shipping_cashback, i.total_cashback
                 FROM dbo.PurchaseCalculatorItems i
                 LEFT JOIN dbo.Platforms p ON i.platform_id = p.platform_id
                 WHERE i.session_id = :session_id
@@ -287,7 +312,11 @@ class PurchaseCalculatorRepo:
         allowed_fields = [
             "override_price", "final_base_price", "cost_source", "markup_amount",
             "estimated_sale_price", "total_fees", "net_after_fees",
-            "target_profit_percentage", "calculated_purchase_price", "quantity", "notes"
+            "target_profit_percentage", "calculated_purchase_price", "quantity", "notes",
+            # Detailed calculation fields
+            "sales_tax", "final_value", "base_variable_fee", "discounted_variable_fee",
+            "transaction_fee", "ad_fee", "shipping_cost", "supplies_cost",
+            "regular_cashback", "shipping_cashback", "total_cashback"
         ]
         
         for key, value in updates.items():
@@ -318,7 +347,10 @@ class PurchaseCalculatorRepo:
                        i.override_price, i.final_base_price, i.cost_source, i.markup_amount,
                        i.estimated_sale_price, i.total_fees, i.net_after_fees,
                        i.target_profit_percentage, i.calculated_purchase_price, i.quantity,
-                       i.notes, i.created_at, p.name as platform_name, p.short_name as platform_short_name
+                       i.notes, i.created_at, p.name as platform_name, p.short_name as platform_short_name,
+                       i.sales_tax, i.final_value, i.base_variable_fee, i.discounted_variable_fee,
+                       i.transaction_fee, i.ad_fee, i.shipping_cost, i.supplies_cost,
+                       i.regular_cashback, i.shipping_cashback, i.total_cashback
                 FROM dbo.PurchaseCalculatorItems i
                 LEFT JOIN dbo.Platforms p ON i.platform_id = p.platform_id
                 WHERE i.item_id = :item_id
