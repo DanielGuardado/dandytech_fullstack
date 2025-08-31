@@ -208,6 +208,29 @@ class PurchaseCalculatorRepo:
 
     def add_item(self, session_id: int, item_data: Dict) -> Dict:
         """Add item to calculator session"""
+        # Prepare parameters, ensuring all required fields have values
+        params = {
+            "session_id": session_id,
+            "catalog_product_id": item_data.get("catalog_product_id"),
+            "variant_id": item_data.get("variant_id"),
+            "platform_id": item_data.get("platform_id"),
+            "product_title": item_data.get("product_title", ""),
+            "variant_type_code": item_data.get("variant_type_code", ""),
+            "pricecharting_id": item_data.get("pricecharting_id"),
+            "market_price": item_data.get("market_price"),
+            "override_price": item_data.get("override_price"),
+            "final_base_price": item_data.get("final_base_price"),
+            "cost_source": item_data.get("cost_source", "manual"),
+            "markup_amount": item_data.get("markup_amount"),
+            "estimated_sale_price": item_data.get("estimated_sale_price"),
+            "total_fees": item_data.get("total_fees"),
+            "net_after_fees": item_data.get("net_after_fees"),
+            "target_profit_percentage": item_data.get("target_profit_percentage", 25.0),
+            "calculated_purchase_price": item_data.get("calculated_purchase_price"),
+            "quantity": item_data.get("quantity", 1),
+            "notes": item_data.get("notes")
+        }
+        
         result = self.db.execute(
             text("""
                 INSERT INTO dbo.PurchaseCalculatorItems (
@@ -233,10 +256,7 @@ class PurchaseCalculatorRepo:
                     :quantity, :notes
                 )
             """),
-            {
-                "session_id": session_id,
-                **item_data
-            }
+            params
         ).mappings().first()
         return dict(result)
 

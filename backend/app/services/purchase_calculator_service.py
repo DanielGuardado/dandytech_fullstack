@@ -66,6 +66,17 @@ class PurchaseCalculatorService:
             raise AppError("Session not found", 404)
         
         items = self.repo.get_session_items(session_id)
+        
+        # Add detailed calculation breakdown to each item
+        for item in items:
+            if item.get("market_price") or item.get("override_price"):
+                detailed_calcs = self._calculate_item_pricing(item)
+                item.update({k: v for k, v in detailed_calcs.items() 
+                           if k in ['sales_tax', 'final_value', 'base_variable_fee', 
+                                   'discounted_variable_fee', 'transaction_fee', 'ad_fee', 
+                                   'shipping_cost', 'supplies_cost', 'regular_cashback', 
+                                   'shipping_cashback', 'total_cashback']})
+        
         session["items"] = items
         return session
 
@@ -107,6 +118,9 @@ class PurchaseCalculatorService:
 
     def add_item(self, session_id: int, item_data: Dict) -> Dict:
         """Add item to session with calculations"""
+        # Debug logging
+        print(f"DEBUG: Received item_data: {item_data}")
+        
         session = self.repo.get_session(session_id)
         if not session:
             raise AppError("Session not found", 404)
@@ -116,12 +130,28 @@ class PurchaseCalculatorService:
         
         # Validate item data and get product context if needed
         validated_item = self._validate_and_enrich_item(item_data)
+        print(f"DEBUG: Validated item: {validated_item}")
         
         # Perform calculations
         calculated_item = self._calculate_item_pricing(validated_item)
+        print(f"DEBUG: Calculated item: {calculated_item}")
+        
+        # Extract database fields (exclude detailed calculation fields)
+        db_fields = {k: v for k, v in calculated_item.items() 
+                    if k not in ['sales_tax', 'final_value', 'base_variable_fee', 
+                                'discounted_variable_fee', 'transaction_fee', 'ad_fee', 
+                                'shipping_cost', 'supplies_cost', 'regular_cashback', 
+                                'shipping_cashback', 'total_cashback']}
         
         # Add to database
-        created_item = self.repo.add_item(session_id, calculated_item)
+        created_item = self.repo.add_item(session_id, db_fields)
+        
+        # Add detailed calculation fields back for response
+        created_item.update({k: v for k, v in calculated_item.items() 
+                           if k in ['sales_tax', 'final_value', 'base_variable_fee', 
+                                   'discounted_variable_fee', 'transaction_fee', 'ad_fee', 
+                                   'shipping_cost', 'supplies_cost', 'regular_cashback', 
+                                   'shipping_cashback', 'total_cashback']})
         
         # Update session totals
         self._recalculate_session_totals(session_id)
@@ -290,25 +320,34 @@ class PurchaseCalculatorService:
     def _validate_and_enrich_item(self, item_data: Dict) -> Dict:
         """Validate and enrich item data with product context"""
         enriched = dict(item_data)
+        print(f"DEBUG: enriched before context: {enriched}")
         
         # If we have catalog_product_id and variant_id, get product context
         if enriched.get("catalog_product_id") and enriched.get("variant_id"):
             try:
                 ctx = self.catalog_repo.get_product_context(enriched["catalog_product_id"])
                 variant_ctx = self.po_repo.get_variant_context(enriched["variant_id"])
+                print(f"DEBUG: variant_ctx: {variant_ctx}")
                 
                 # Enrich with product data
                 enriched["product_title"] = ctx.get("title", "")
                 enriched["platform_id"] = ctx.get("platform_id")
                 enriched["variant_type_code"] = variant_ctx.get("variant_type_code", "")
                 
-                # Get PriceCharting data if available and not overridden
-                if ctx.get("pricecharting_id") and not enriched.get("override_price"):
+                print(f"DEBUG: enriched market_price before PC lookup: {enriched.get('market_price')}")
+                
+                # Get PriceCharting data if available and not already provided
+                if ctx.get("pricecharting_id"):
                     enriched["pricecharting_id"] = ctx["pricecharting_id"]
-                    enriched["market_price"] = variant_ctx.get("current_market_value")
+                    print(f"DEBUG: Has pricecharting_id, variant current_market_value: {variant_ctx.get('current_market_value')}")
+                    # DON'T overwrite user-provided market_price
+                    print(f"DEBUG: enriched market_price after PC lookup: {enriched.get('market_price')}")
+                else:
+                    print("DEBUG: No pricecharting_id found")
                     
-            except Exception:
+            except Exception as e:
                 # If we can't get product context, continue with provided data
+                print(f"DEBUG: Exception in context lookup: {e}")
                 pass
         
         # Get platform markup if platform_id is available
@@ -320,10 +359,11 @@ class PurchaseCalculatorService:
             if platform_row:
                 enriched["markup_amount"] = float(platform_row)
         
+        print(f"DEBUG: enriched at end of validation: {enriched}")
         return enriched
 
     def _calculate_item_pricing(self, item_data: Dict) -> Dict:
-        """Calculate all pricing fields for an item"""
+        """Calculate all pricing fields for an item using eBay fee structure"""
         config = self.get_config()
         
         # Determine base price and source
@@ -343,6 +383,17 @@ class PurchaseCalculatorService:
                 "final_base_price": None,
                 "cost_source": "manual",
                 "estimated_sale_price": None,
+                "sales_tax": None,
+                "final_value": None,
+                "base_variable_fee": None,
+                "discounted_variable_fee": None,
+                "transaction_fee": None,
+                "ad_fee": None,
+                "shipping_cost": None,
+                "supplies_cost": None,
+                "regular_cashback": None,
+                "shipping_cashback": None,
+                "total_cashback": None,
                 "total_fees": None,
                 "net_after_fees": None,
                 "calculated_purchase_price": None
@@ -352,39 +403,60 @@ class PurchaseCalculatorService:
         markup_amount = item_data.get("markup_amount", 3.50)
         estimated_sale_price = final_base_price + markup_amount
         
-        # Calculate fees based on category
+        # Step 1: Calculate sales tax and final value (what buyer pays)
+        sales_tax_rate = float(config["sales_tax_avg"]["config_value"]) / 100
+        sales_tax = estimated_sale_price * sales_tax_rate
+        final_value = estimated_sale_price + sales_tax
+        
         # Determine if this is a game or console based on category or variant type
         is_console = self._is_console_item(item_data)
         
-        # Get fee configuration
+        # Get fee configuration (convert Decimals to floats)
         if is_console:
-            variable_fee_rate = config["variable_fee_consoles"]["config_value"] / 100
-            shipping_cost = config["average_shipping_cost_consoles"]["config_value"]
-            supplies_cost = config["shipping_supplies_cost_over_40"]["config_value"] if estimated_sale_price > 40 else config["shipping_supplies_cost_under_40"]["config_value"]
+            variable_fee_rate = float(config["variable_fee_consoles"]["config_value"]) / 100
+            shipping_cost = float(config["average_shipping_cost_consoles"]["config_value"])
         else:
-            variable_fee_rate = config["variable_fee_games"]["config_value"] / 100
-            shipping_cost = config["average_shipping_cost"]["config_value"]
-            supplies_cost = config["shipping_supplies_cost_under_40"]["config_value"] if estimated_sale_price <= 40 else config["shipping_supplies_cost_over_40"]["config_value"]
+            variable_fee_rate = float(config["variable_fee_games"]["config_value"]) / 100
+            shipping_cost = float(config["average_shipping_cost"]["config_value"])
         
-        # Calculate total fees
-        variable_fee = estimated_sale_price * variable_fee_rate
-        flat_fee = config["flat_trx_fee"]["config_value"]
-        ad_fee = estimated_sale_price * (config["ad_fee"]["config_value"] / 100)
-        sales_tax = estimated_sale_price * (config["sales_tax_avg"]["config_value"] / 100)
+        # Supplies cost based on sale price threshold (not final value)
+        supplies_cost = (float(config["shipping_supplies_cost_under_40"]["config_value"]) 
+                        if estimated_sale_price <= 40 
+                        else float(config["shipping_supplies_cost_over_40"]["config_value"]))
         
-        total_fees = variable_fee + flat_fee + ad_fee + sales_tax + shipping_cost + supplies_cost
+        # Step 2: Calculate variable fee with top seller discount
+        base_variable_fee = final_value * variable_fee_rate
+        top_seller_discount_rate = float(config["top_seller_discount"]["config_value"]) / 100
+        discounted_variable_fee = base_variable_fee * (1 - top_seller_discount_rate)
         
-        # Apply discounts/cashback
-        top_seller_discount = total_fees * (config["top_seller_discount"]["config_value"] / 100)
-        regular_cashback = estimated_sale_price * (config["regular_cashback_rate"]["config_value"] / 100)
-        shipping_cashback = shipping_cost * (config["shipping_cashback_rate"]["config_value"] / 100)
+        # Step 3: Transaction fee = discounted variable fee + flat fee
+        flat_fee = float(config["flat_trx_fee"]["config_value"])
+        transaction_fee = discounted_variable_fee + flat_fee
         
-        total_fees -= (top_seller_discount + regular_cashback + shipping_cashback)
+        # Step 4: Ad fee based on final value
+        ad_fee_rate = float(config["ad_fee"]["config_value"]) / 100
+        ad_fee = final_value * ad_fee_rate
         
-        # Calculate net after fees
-        net_after_fees = estimated_sale_price - total_fees
+        # Step 5: Total fees
+        total_fees = transaction_fee + ad_fee + shipping_cost + supplies_cost
         
-        # Calculate purchase price based on target profit margin
+        # Step 6: Calculate cashback (money back to us)
+        regular_cashback_rate = float(config["regular_cashback_rate"]["config_value"]) / 100
+        shipping_cashback_rate = float(config["shipping_cashback_rate"]["config_value"]) / 100
+        regular_cashback = estimated_sale_price * regular_cashback_rate
+        shipping_cashback = shipping_cost * shipping_cashback_rate
+        total_cashback = regular_cashback + shipping_cashback
+        
+        # Step 7: Net after fees (we collect tax but remit it, so it nets out)
+        net_after_fees = estimated_sale_price - total_fees + total_cashback
+        
+        # Debug logging for calculation verification
+        print(f"DEBUG CALC - Sale: ${estimated_sale_price:.2f}, Tax: ${sales_tax:.2f}, Final: ${final_value:.2f}")
+        print(f"DEBUG CALC - Base Var: ${base_variable_fee:.2f}, Disc Var: ${discounted_variable_fee:.2f}, Trans: ${transaction_fee:.2f}")
+        print(f"DEBUG CALC - Ad: ${ad_fee:.2f}, Ship: ${shipping_cost:.2f}, Supplies: ${supplies_cost:.2f}")
+        print(f"DEBUG CALC - Total Fees: ${total_fees:.2f}, Cashback: ${total_cashback:.2f}, Net: ${net_after_fees:.2f}")
+        
+        # Step 8: Calculate purchase price based on target profit margin
         target_profit_percentage = item_data.get("target_profit_percentage", 25.0) / 100
         calculated_purchase_price = net_after_fees * (1 - target_profit_percentage)
         
@@ -393,6 +465,17 @@ class PurchaseCalculatorService:
             "final_base_price": final_base_price,
             "cost_source": cost_source,
             "estimated_sale_price": estimated_sale_price,
+            "sales_tax": sales_tax,
+            "final_value": final_value,
+            "base_variable_fee": base_variable_fee,
+            "discounted_variable_fee": discounted_variable_fee,
+            "transaction_fee": transaction_fee,
+            "ad_fee": ad_fee,
+            "shipping_cost": shipping_cost,
+            "supplies_cost": supplies_cost,
+            "regular_cashback": regular_cashback,
+            "shipping_cashback": shipping_cashback,
+            "total_cashback": total_cashback,
             "total_fees": total_fees,
             "net_after_fees": net_after_fees,
             "calculated_purchase_price": max(0, calculated_purchase_price)  # Don't go negative
