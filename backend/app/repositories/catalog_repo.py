@@ -192,7 +192,7 @@ class CatalogRepo:
             {"id": catalog_product_id, "pid": platform_id},
         )
 
-    def insert_console_child(self, catalog_product_id: int, model_number: str, storage_capacity_gb: Optional[int],
+    def insert_console_child(self, catalog_product_id: int, model_number: Optional[str], storage_capacity_gb: Optional[int],
                              firmware_sensitive: bool):
         self.db.execute(
             text("""

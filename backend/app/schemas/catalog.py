@@ -33,7 +33,7 @@ class GameChild(BaseModel):
     platform_id: int
 
 class ConsoleChild(BaseModel):
-    model_number: str
+    model_number: Optional[str] = None
     storage_capacity_gb: Optional[int] = None
     firmware_sensitive: Optional[bool] = False
     region_default: Optional[str] = None

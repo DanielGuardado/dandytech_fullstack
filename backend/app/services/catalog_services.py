@@ -158,15 +158,14 @@ class CatalogService:
             created_children.append("CatalogProductGames")
 
         elif category_name == "Console":
-            if not payload.console or not payload.console.model_number:
-                raise AppError("Console requires console.model_number", 400)
-            self.repo.insert_console_child(
-                catalog_product_id=new_id,
-                model_number=payload.console.model_number,
-                storage_capacity_gb=payload.console.storage_capacity_gb,
-                firmware_sensitive=bool(payload.console.firmware_sensitive),
-            )
-            created_children.append("CatalogProductConsoles")
+            if payload.console:
+                self.repo.insert_console_child(
+                    catalog_product_id=new_id,
+                    model_number=payload.console.model_number,
+                    storage_capacity_gb=payload.console.storage_capacity_gb,
+                    firmware_sensitive=bool(payload.console.firmware_sensitive),
+                )
+                created_children.append("CatalogProductConsoles")
 
         # Amiibo / Accessories / Funko Pop / Controller → no child required
 
