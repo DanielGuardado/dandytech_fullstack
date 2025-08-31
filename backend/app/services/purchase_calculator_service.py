@@ -356,6 +356,32 @@ class PurchaseCalculatorService:
             if platform_row:
                 enriched["markup_amount"] = float(platform_row)
         
+        # Auto-calculate deductions for CIB items without manual on manual-sensitive platforms
+        if (enriched.get("variant_type_code") == "CIB" and 
+            enriched.get("catalog_product_id") and
+            not enriched.get("deductions") and  # Don't override existing deductions
+            enriched.get("has_manual") is False):  # Explicitly set to False (not None)
+            
+            # Check if platform is manual sensitive
+            platform_manual_sensitive = self.db.execute(
+                text("""
+                    SELECT p.video_game_manual_sensitive
+                    FROM dbo.Platforms p
+                    JOIN dbo.CatalogProductGames cpg ON p.platform_id = cpg.platform_id
+                    WHERE cpg.catalog_product_id = :id
+                """),
+                {"id": enriched["catalog_product_id"]}
+            ).scalar()
+            
+            if platform_manual_sensitive:
+                # Default deduction is the markup amount (so CIB without manual = Loose price)
+                markup_amount = enriched.get("markup_amount", 3.50)
+                deduction_reasons = {"no_manual": markup_amount}
+                
+                enriched["deductions"] = markup_amount
+                enriched["deduction_reasons"] = deduction_reasons
+                print(f"DEBUG: Auto-applied no_manual deduction of ${markup_amount}")
+        
         print(f"DEBUG: enriched at end of validation: {enriched}")
         return enriched
 
@@ -398,7 +424,8 @@ class PurchaseCalculatorService:
         
         final_base_price = base_price
         markup_amount = item_data.get("markup_amount", 3.50)
-        estimated_sale_price = final_base_price + markup_amount
+        deductions = item_data.get("deductions", 0.0) or 0.0
+        estimated_sale_price = final_base_price + markup_amount - deductions
         
         # Step 1: Calculate sales tax and final value (what buyer pays)
         sales_tax_rate = float(config["sales_tax_avg"]["config_value"]) / 100
@@ -457,8 +484,15 @@ class PurchaseCalculatorService:
         target_profit_percentage = item_data.get("target_profit_percentage", 25.0) / 100
         calculated_purchase_price = net_after_fees * (1 - target_profit_percentage)
         
+        # Handle deduction_reasons serialization
+        deduction_reasons = item_data.get("deduction_reasons")
+        if isinstance(deduction_reasons, dict):
+            import json
+            deduction_reasons = json.dumps(deduction_reasons)
+        
         return {
             **item_data,
+            "deduction_reasons": deduction_reasons,  # Ensure it's JSON string
             "final_base_price": final_base_price,
             "cost_source": cost_source,
             "estimated_sale_price": estimated_sale_price,

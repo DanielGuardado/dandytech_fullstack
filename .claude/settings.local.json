@@ -14,7 +14,10 @@
       "Bash(.venvScriptsactivate.bat)",
       "Bash(..venvScriptspython -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000)",
       "Bash(\".venv\\Scripts\\activate.bat\")",
-      "Bash(\"C:\\Users\\Dan\\Dropbox\\dev\\dandytech\\backend\\.venv\\Scripts\\python.exe\" -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000)"
+      "Bash(\"C:\\Users\\Dan\\Dropbox\\dev\\dandytech\\backend\\.venv\\Scripts\\python.exe\" -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000)",
+      "Bash(dir:*)",
+      "Bash(/bashes)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []

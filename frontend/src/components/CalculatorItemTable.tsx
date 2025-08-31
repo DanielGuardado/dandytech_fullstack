@@ -68,16 +68,35 @@ Shipping (3%): +${calculatorService.formatCurrency(item.shipping_cashback || 0)}
 ✅ Net Amount: ${calculatorService.formatCurrency(item.net_after_fees)}`;
   };
 
+  // Helper function to generate deductions tooltip content
+  const getDeductionsTooltip = (item: CalculatorItem) => {
+    if (!item.deductions || item.deductions <= 0) return null;
+    
+    try {
+      const reasons = item.deduction_reasons ? JSON.parse(item.deduction_reasons) : {};
+      const reasonsText = Object.entries(reasons)
+        .map(([reason, amount]: [string, any]) => `${reason.replace('_', ' ')}: -${calculatorService.formatCurrency(amount)}`)
+        .join('\n');
+      
+      return `🔻 DEDUCTION BREAKDOWN:
+${reasonsText || 'Custom deduction: -' + calculatorService.formatCurrency(item.deductions)}
+Total Deductions: -${calculatorService.formatCurrency(item.deductions)}`;
+    } catch (e) {
+      return `🔻 DEDUCTIONS: -${calculatorService.formatCurrency(item.deductions)}`;
+    }
+  };
+
   // Helper function to generate sale price tooltip content
   const getSaleTooltip = (item: CalculatorItem) => {
     if (!item.estimated_sale_price) return null;
 
     const finalValue = item.final_value || 0;
     const salesTax = item.sales_tax || 0;
+    const deductions = item.deductions || 0;
 
     return `📊 SALE BREAKDOWN:
 Base Price: ${calculatorService.formatCurrency(item.final_base_price || 0)}
-Markup: +${calculatorService.formatCurrency(item.markup_amount || 0)}
+Markup: +${calculatorService.formatCurrency(item.markup_amount || 0)}${deductions > 0 ? '\nDeductions: -' + calculatorService.formatCurrency(deductions) : ''}
 Sale Price: ${calculatorService.formatCurrency(item.estimated_sale_price)}
 Sales Tax (5.09%): ${calculatorService.formatCurrency(salesTax)}
 Final Value: ${calculatorService.formatCurrency(finalValue)}`;
@@ -115,6 +134,7 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
           <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Percentage of market price for this purchase">% of Market 🎯</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Your maximum purchase price based on target profit">Purchase $</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Markup</th>
+          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Price deductions (e.g. missing manual)">Deductions</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Sale $</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Fees</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Net $</th>
@@ -194,7 +214,22 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace' }}>
               {item.markup_amount ? calculatorService.formatCurrency(item.markup_amount) : '-'}
             </td>
-            {/* 8. Sale $ - green color */}
+            {/* 8. Deductions - orange color */}
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', color: '#fd7e14' }}>
+              {item.deductions && item.deductions > 0 ? (
+                <CalculatorTooltip content={getDeductionsTooltip(item)}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', cursor: 'help' }}>
+                    <span style={{ fontWeight: 'bold' }}>
+                      -{calculatorService.formatCurrency(item.deductions)}
+                    </span>
+                    {item.variant_type_code === 'CIB' && item.has_manual === false && (
+                      <span style={{ fontSize: '9px', color: '#6c757d' }}>No Manual</span>
+                    )}
+                  </div>
+                </CalculatorTooltip>
+              ) : '-'}
+            </td>
+            {/* 9. Sale $ - green color */}
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#28a745' }}>
               {item.estimated_sale_price ? (
                 <CalculatorTooltip content={getSaleTooltip(item)}>

@@ -28,6 +28,8 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
   const [targetProfitPercentage, setTargetProfitPercentage] = useState<string>('25');
   const [quantity, setQuantity] = useState<string>('1');
   const [notes, setNotes] = useState<string>('');
+  const [hasManual, setHasManual] = useState<boolean>(true);
+  const [customDeductions, setCustomDeductions] = useState<string>('');
 
   // Calculated values
   const [calculations, setCalculations] = useState<{
@@ -103,8 +105,20 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
       return;
     }
 
+    // Calculate deductions for CIB items without manual
+    let deductions = 0;
+    const customDeductionAmount = parseFloat(customDeductions) || 0;
+    
+    // Auto deduction for CIB without manual (assuming we'll add logic to detect manual-sensitive platforms)
+    const isCIB = selectedVariant.variant_type_code === 'CIB';
+    if (isCIB && !hasManual && customDeductionAmount === 0) {
+      deductions = markup; // Default to markup amount
+    } else if (customDeductionAmount > 0) {
+      deductions = customDeductionAmount;
+    }
+    
     // Perform calculation using the same logic as the backend
-    const estimatedSalePrice = basePrice + markup;
+    const estimatedSalePrice = basePrice + markup - deductions;
     
     // Step 1: Calculate sales tax and final value (what buyer pays)
     const salesTaxRate = (config.sales_tax_avg?.config_value || 5.09) / 100;
@@ -175,12 +189,27 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
       profitPerItem,
       profitMargin
     });
-  }, [marketPrice, overridePrice, useOverride, markupAmount, targetProfitPercentage, quantity, config]);
+  }, [marketPrice, overridePrice, useOverride, markupAmount, targetProfitPercentage, quantity, hasManual, customDeductions, selectedVariant.variant_type_code, config]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!calculations) return;
+
+    // Calculate deductions for submission
+    const isCIB = selectedVariant.variant_type_code === 'CIB';
+    const markupValue = parseFloat(markupAmount) || 0;
+    const customDeductionAmount = parseFloat(customDeductions) || 0;
+    let finalDeductions = 0;
+    let deductionReasons: Record<string, number> = {};
+    
+    if (isCIB && !hasManual && customDeductionAmount === 0) {
+      finalDeductions = markupValue;
+      deductionReasons = { "no_manual": markupValue };
+    } else if (customDeductionAmount > 0) {
+      finalDeductions = customDeductionAmount;
+      deductionReasons = { "custom": customDeductionAmount };
+    }
 
     const itemData: CalculatorItemCreate = {
       catalog_product_id: undefined, // Will be set by parent
@@ -189,7 +218,10 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
       variant_type_code: selectedVariant.variant_type_code,
       market_price: marketPrice && parseFloat(marketPrice) > 0 ? parseFloat(marketPrice) : undefined,
       override_price: useOverride && overridePrice && parseFloat(overridePrice) > 0 ? parseFloat(overridePrice) : undefined,
-      markup_amount: markupAmount && parseFloat(markupAmount) >= 0 ? parseFloat(markupAmount) : undefined,
+      markup_amount: markupValue >= 0 ? markupValue : undefined,
+      deductions: finalDeductions > 0 ? finalDeductions : undefined,
+      deduction_reasons: Object.keys(deductionReasons).length > 0 ? deductionReasons : undefined,
+      has_manual: isCIB ? hasManual : undefined, // Only set for CIB items
       target_profit_percentage: parseFloat(targetProfitPercentage),
       quantity: parseInt(quantity),
       notes: notes.trim() || undefined
@@ -445,6 +477,84 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
             {...addFocusHandlers()}
           />
         </div>
+
+        {/* CIB Manual and Deductions Section */}
+        {selectedVariant.variant_type_code === 'CIB' && (
+          <div style={{
+            background: '#fff3cd',
+            border: '1px solid #ffeaa7',
+            borderRadius: '4px',
+            padding: '12px',
+            marginTop: '8px'
+          }}>
+            <h5 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 'bold', color: '#856404' }}>
+              📋 CIB Item Options
+            </h5>
+            
+            {/* Manual Checkbox */}
+            <div style={{ marginBottom: '8px' }}>
+              <label style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                color: '#495057',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={hasManual}
+                  onChange={(e) => setHasManual(e.target.checked)}
+                  disabled={loading}
+                  style={{
+                    width: '16px',
+                    height: '16px'
+                  }}
+                />
+                📖 Includes Manual
+                {!hasManual && (
+                  <span style={{ color: '#dc3545', fontSize: '10px', marginLeft: '4px' }}>
+                    (Will deduct ${parseFloat(markupAmount) || 0} from sale price)
+                  </span>
+                )}
+              </label>
+            </div>
+
+            {/* Custom Deductions */}
+            <div>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '11px', 
+                fontWeight: 'bold', 
+                color: '#6c757d', 
+                marginBottom: '4px',
+                textTransform: 'uppercase'
+              }}>
+                Custom Deductions (overrides manual deduction)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={customDeductions}
+                onChange={(e) => setCustomDeductions(e.target.value)}
+                disabled={loading}
+                placeholder="Additional price reduction"
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  textAlign: 'right',
+                  fontFamily: 'monospace'
+                }}
+                {...addFocusHandlers()}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Calculations Display */}
         {calculations && (

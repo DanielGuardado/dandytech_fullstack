@@ -240,7 +240,11 @@ class PurchaseCalculatorRepo:
             "supplies_cost": item_data.get("supplies_cost"),
             "regular_cashback": item_data.get("regular_cashback"),
             "shipping_cashback": item_data.get("shipping_cashback"),
-            "total_cashback": item_data.get("total_cashback")
+            "total_cashback": item_data.get("total_cashback"),
+            # Deduction fields
+            "deductions": item_data.get("deductions"),
+            "deduction_reasons": item_data.get("deduction_reasons"),
+            "has_manual": item_data.get("has_manual")
         }
         
         result = self.db.execute(
@@ -253,7 +257,8 @@ class PurchaseCalculatorRepo:
                     quantity, notes,
                     sales_tax, final_value, base_variable_fee, discounted_variable_fee,
                     transaction_fee, ad_fee, shipping_cost, supplies_cost,
-                    regular_cashback, shipping_cashback, total_cashback
+                    regular_cashback, shipping_cashback, total_cashback,
+                    deductions, deduction_reasons, has_manual
                 )
                 OUTPUT INSERTED.item_id, INSERTED.session_id, INSERTED.catalog_product_id,
                        INSERTED.variant_id, INSERTED.product_title,
@@ -266,7 +271,7 @@ class PurchaseCalculatorRepo:
                        INSERTED.base_variable_fee, INSERTED.discounted_variable_fee,
                        INSERTED.transaction_fee, INSERTED.ad_fee, INSERTED.shipping_cost,
                        INSERTED.supplies_cost, INSERTED.regular_cashback, INSERTED.shipping_cashback,
-                       INSERTED.total_cashback
+                       INSERTED.total_cashback, INSERTED.deductions, INSERTED.deduction_reasons, INSERTED.has_manual
                 VALUES (
                     :session_id, :catalog_product_id, :variant_id, :product_title,
                     :variant_type_code, :pricecharting_id, :market_price, :override_price,
@@ -275,7 +280,8 @@ class PurchaseCalculatorRepo:
                     :quantity, :notes,
                     :sales_tax, :final_value, :base_variable_fee, :discounted_variable_fee,
                     :transaction_fee, :ad_fee, :shipping_cost, :supplies_cost,
-                    :regular_cashback, :shipping_cashback, :total_cashback
+                    :regular_cashback, :shipping_cashback, :total_cashback,
+                    :deductions, :deduction_reasons, :has_manual
                 )
             """),
             params
@@ -296,7 +302,8 @@ class PurchaseCalculatorRepo:
                        p.short_name as platform_short_name,
                        i.sales_tax, i.final_value, i.base_variable_fee, i.discounted_variable_fee,
                        i.transaction_fee, i.ad_fee, i.shipping_cost, i.supplies_cost,
-                       i.regular_cashback, i.shipping_cashback, i.total_cashback
+                       i.regular_cashback, i.shipping_cashback, i.total_cashback,
+                       i.deductions, i.deduction_reasons, i.has_manual
                 FROM dbo.PurchaseCalculatorItems i
                 LEFT JOIN dbo.CatalogProductGames cpg ON cpg.catalog_product_id = i.catalog_product_id
                 LEFT JOIN dbo.Platforms p ON p.platform_id = cpg.platform_id
@@ -319,7 +326,9 @@ class PurchaseCalculatorRepo:
             # Detailed calculation fields
             "sales_tax", "final_value", "base_variable_fee", "discounted_variable_fee",
             "transaction_fee", "ad_fee", "shipping_cost", "supplies_cost",
-            "regular_cashback", "shipping_cashback", "total_cashback"
+            "regular_cashback", "shipping_cashback", "total_cashback",
+            # Deduction fields
+            "deductions", "deduction_reasons", "has_manual"
         ]
         
         for key, value in updates.items():
@@ -355,7 +364,8 @@ class PurchaseCalculatorRepo:
                        p.short_name as platform_short_name,
                        i.sales_tax, i.final_value, i.base_variable_fee, i.discounted_variable_fee,
                        i.transaction_fee, i.ad_fee, i.shipping_cost, i.supplies_cost,
-                       i.regular_cashback, i.shipping_cashback, i.total_cashback
+                       i.regular_cashback, i.shipping_cashback, i.total_cashback,
+                       i.deductions, i.deduction_reasons, i.has_manual
                 FROM dbo.PurchaseCalculatorItems i
                 LEFT JOIN dbo.CatalogProductGames cpg ON cpg.catalog_product_id = i.catalog_product_id
                 LEFT JOIN dbo.Platforms p ON p.platform_id = cpg.platform_id

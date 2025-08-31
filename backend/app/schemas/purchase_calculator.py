@@ -65,6 +65,9 @@ class CalculatorItemCreate(BaseModel):
     market_price: Optional[float] = Field(None, ge=0)
     override_price: Optional[float] = Field(None, ge=0)
     markup_amount: Optional[float] = Field(None, ge=0)
+    deductions: Optional[float] = Field(None, ge=0, description="Total amount to deduct from estimated sale price")
+    deduction_reasons: Optional[Dict[str, float]] = Field(None, description="Dictionary of reason to amount deductions")
+    has_manual: Optional[bool] = Field(None, description="Whether CIB item includes manual")
     target_profit_percentage: float = Field(25.0, ge=0, le=100)
     quantity: int = Field(1, ge=1)
     notes: Optional[str] = None
@@ -72,6 +75,9 @@ class CalculatorItemCreate(BaseModel):
 class CalculatorItemUpdate(BaseModel):
     override_price: Optional[float] = Field(None, ge=0)
     markup_amount: Optional[float] = Field(None, ge=0)
+    deductions: Optional[float] = Field(None, ge=0, description="Total amount to deduct from estimated sale price")
+    deduction_reasons: Optional[Dict[str, float]] = Field(None, description="Dictionary of reason to amount deductions")
+    has_manual: Optional[bool] = Field(None, description="Whether CIB item includes manual")
     target_profit_percentage: Optional[float] = Field(None, ge=0, le=100)
     quantity: Optional[int] = Field(None, ge=1)
     notes: Optional[str] = None
@@ -91,6 +97,9 @@ class CalculatorItem(BaseModel):
     final_base_price: Optional[float] = None
     cost_source: Optional[str] = None
     markup_amount: Optional[float] = None
+    deductions: Optional[float] = None
+    deduction_reasons: Optional[str] = None  # JSON string in database
+    has_manual: Optional[bool] = None
     estimated_sale_price: Optional[float] = None
     total_fees: Optional[float] = None
     net_after_fees: Optional[float] = None

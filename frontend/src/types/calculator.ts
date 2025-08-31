@@ -73,6 +73,9 @@ export interface CalculatorItem {
   final_base_price?: number;
   cost_source?: 'pricecharting' | 'manual' | 'pricecharting_override';
   markup_amount?: number;
+  deductions?: number;
+  deduction_reasons?: string;  // JSON string from backend
+  has_manual?: boolean;
   
   // Calculated values
   estimated_sale_price?: number;
@@ -113,6 +116,9 @@ export interface CalculatorItemCreate {
   market_price?: number;
   override_price?: number;
   markup_amount?: number;
+  deductions?: number;
+  deduction_reasons?: Record<string, number>;
+  has_manual?: boolean;
   target_profit_percentage?: number;
   quantity?: number;
   notes?: string;
@@ -121,6 +127,9 @@ export interface CalculatorItemCreate {
 export interface CalculatorItemUpdate {
   override_price?: number;
   markup_amount?: number;
+  deductions?: number;
+  deduction_reasons?: Record<string, number>;
+  has_manual?: boolean;
   target_profit_percentage?: number;
   quantity?: number;
   notes?: string;
