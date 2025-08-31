@@ -51,7 +51,7 @@ def update_platform_markup(
 def create_session(payload: CalculatorSessionCreate, db: Session = Depends(get_db)):
     """Create a new calculator session"""
     service = PurchaseCalculatorService(db)
-    return service.create_session(payload.session_name, payload.source_id)
+    return service.create_session(payload.session_name, payload.source_id, payload.asking_price)
 
 @router.get("/calculator/sessions", response_model=CalculatorSessionListResponse)
 def list_sessions(

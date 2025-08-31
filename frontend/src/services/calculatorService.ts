@@ -206,10 +206,28 @@ class CalculatorService {
   /**
    * Determine profit margin color coding
    */
-  getProfitMarginColor(margin: number, targetMargin: number = 25): string {
-    if (margin >= targetMargin) return '#28a745'; // Green - good margin
-    if (margin >= targetMargin * 0.8) return '#ffc107'; // Yellow - ok margin
-    return '#dc3545'; // Red - low margin
+  getProfitMarginColor(margin: number): string {
+    if (margin > 20) return '#28a745'; // Green - good margin (>20%)
+    if (margin >= 15) return '#ffc107'; // Yellow - acceptable margin (15-20%)
+    return '#dc3545'; // Red - low margin (<15%)
+  }
+
+  /**
+   * Determine ROI color coding
+   */
+  getROIColor(roi: number): string {
+    if (roi >= 40) return '#28a745'; // Green - excellent ROI (≥40%)
+    if (roi >= 25) return '#ffc107'; // Yellow - good ROI (25-40%)
+    return '#dc3545'; // Red - poor ROI (<25%)
+  }
+
+  /**
+   * Determine % of market color coding
+   */
+  getPercentOfMarketColor(percent: number): string {
+    if (percent > 55) return '#28a745'; // Green - good purchase price (>55%)
+    if (percent >= 50) return '#ffc107'; // Yellow - caution zone (50-55%)
+    return '#dc3545'; // Red - too low, quality concern? (<50%)
   }
 
   /**
@@ -226,6 +244,122 @@ class CalculatorService {
     const date = new Date().toLocaleDateString();
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return sourceName ? `${sourceName} - ${date} ${time}` : `Session - ${date} ${time}`;
+  }
+
+  /**
+   * Compare asking price vs calculated purchase price
+   */
+  compareAskingPrice(askingPrice: number, calculatedPrice: number): {
+    difference: number;
+    percentageDifference: number;
+    isDealGood: boolean;
+    description: string;
+  } {
+    const difference = askingPrice - calculatedPrice;
+    const percentageDifference = calculatedPrice > 0 ? (difference / calculatedPrice) * 100 : 0;
+    const isDealGood = askingPrice <= calculatedPrice;
+    
+    let description: string;
+    if (Math.abs(difference) < 0.01) {
+      description = "Asking price matches calculated max";
+    } else if (isDealGood) {
+      description = `Save ${this.formatCurrency(Math.abs(difference))} vs calculated max`;
+    } else {
+      description = `${this.formatCurrency(difference)} over calculated max`;
+    }
+    
+    return {
+      difference,
+      percentageDifference,
+      isDealGood,
+      description
+    };
+  }
+
+  /**
+   * Calculate actual profit margin if buying at asking price
+   */
+  calculateActualMargin(askingPrice: number, netAfterFees: number): number {
+    const actualProfit = netAfterFees - askingPrice;
+    return netAfterFees > 0 ? (actualProfit / netAfterFees) * 100 : 0;
+  }
+
+  /**
+   * Calculate actual ROI if buying at asking price
+   */
+  calculateActualROI(askingPrice: number, netAfterFees: number): number {
+    const actualProfit = netAfterFees - askingPrice;
+    return askingPrice > 0 ? (actualProfit / askingPrice) * 100 : 0;
+  }
+
+  /**
+   * Get color coding for asking price comparison
+   */
+  getAskingPriceColor(askingPrice: number, calculatedPrice: number): string {
+    const comparison = this.compareAskingPrice(askingPrice, calculatedPrice);
+    if (comparison.isDealGood) {
+      return '#28a745'; // Green - good deal
+    } else if (comparison.percentageDifference <= 10) {
+      return '#ffc107'; // Yellow - slightly over but acceptable
+    } else {
+      return '#dc3545'; // Red - significantly over
+    }
+  }
+
+  /**
+   * Calculate profit if buying at asking price
+   */
+  calculateProfitAtAskingPrice(totalRevenue: number, askingPrice: number): number {
+    return totalRevenue - askingPrice;
+  }
+
+  /**
+   * Calculate profit margin if buying at asking price
+   */
+  calculateMarginAtAskingPrice(totalRevenue: number, askingPrice: number): number {
+    const profit = this.calculateProfitAtAskingPrice(totalRevenue, askingPrice);
+    return totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+  }
+
+  /**
+   * Calculate ROI if buying at asking price
+   */
+  calculateROIAtAskingPrice(totalRevenue: number, askingPrice: number): number {
+    const profit = this.calculateProfitAtAskingPrice(totalRevenue, askingPrice);
+    return askingPrice > 0 ? (profit / askingPrice) * 100 : 0;
+  }
+
+  /**
+   * Get deal quality rating based on asking price vs max purchase
+   */
+  getDealQualityRating(askingPrice: number, maxPurchasePrice: number): {
+    rating: string;
+    emoji: string;
+    color: string;
+    percentage: number;
+  } {
+    if (maxPurchasePrice <= 0) {
+      return { rating: 'No Data', emoji: '❓', color: '#6c757d', percentage: 0 };
+    }
+
+    const percentage = (askingPrice / maxPurchasePrice) * 100;
+
+    if (percentage < 80) {
+      return { rating: 'Excellent', emoji: '🟢', color: '#28a745', percentage };
+    } else if (percentage < 95) {
+      return { rating: 'Good Deal', emoji: '🟡', color: '#28a745', percentage };
+    } else if (percentage <= 100) {
+      return { rating: 'Fair Deal', emoji: '🟠', color: '#ffc107', percentage };
+    } else {
+      return { rating: 'Overpriced', emoji: '🔴', color: '#dc3545', percentage };
+    }
+  }
+
+  /**
+   * Calculate percentage of market value for asking price
+   */
+  calculatePercentOfMarketForAskingPrice(askingPrice: number, totalMarketValue: number): number {
+    return totalMarketValue > 0 ? (askingPrice / totalMarketValue) * 100 : 0;
   }
 
   /**

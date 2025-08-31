@@ -74,18 +74,18 @@ class PurchaseCalculatorRepo:
 
     # -------- Session Methods --------
 
-    def create_session(self, session_name: Optional[str] = None, source_id: Optional[int] = None) -> Dict:
+    def create_session(self, session_name: Optional[str] = None, source_id: Optional[int] = None, asking_price: Optional[float] = None) -> Dict:
         """Create a new calculator session"""
         result = self.db.execute(
             text("""
-                INSERT INTO dbo.PurchaseCalculatorSessions (session_name, source_id)
+                INSERT INTO dbo.PurchaseCalculatorSessions (session_name, source_id, asking_price)
                 OUTPUT INSERTED.session_id, INSERTED.session_name, INSERTED.source_id,
                        INSERTED.total_items, INSERTED.total_market_value, INSERTED.total_estimated_revenue,
                        INSERTED.total_purchase_price, INSERTED.expected_profit, INSERTED.expected_profit_margin,
-                       INSERTED.status, INSERTED.purchase_order_id, INSERTED.created_at, INSERTED.updated_at
-                VALUES (:session_name, :source_id)
+                       INSERTED.status, INSERTED.purchase_order_id, INSERTED.asking_price, INSERTED.created_at, INSERTED.updated_at
+                VALUES (:session_name, :source_id, :asking_price)
             """),
-            {"session_name": session_name, "source_id": source_id}
+            {"session_name": session_name, "source_id": source_id, "asking_price": asking_price}
         ).mappings().first()
         return dict(result)
 
@@ -96,7 +96,7 @@ class PurchaseCalculatorRepo:
                 SELECT s.session_id, s.session_name, s.source_id, s.total_items,
                        s.total_market_value, s.total_estimated_revenue, s.total_purchase_price,
                        s.expected_profit, s.expected_profit_margin, s.status, s.purchase_order_id,
-                       s.created_at, s.updated_at, src.name as source_name
+                       s.asking_price, s.created_at, s.updated_at, src.name as source_name
                 FROM dbo.PurchaseCalculatorSessions s
                 LEFT JOIN dbo.Sources src ON s.source_id = src.source_id
                 WHERE s.session_id = :session_id
@@ -127,7 +127,7 @@ class PurchaseCalculatorRepo:
             SELECT s.session_id, s.session_name, s.source_id, s.total_items,
                    s.total_market_value, s.total_estimated_revenue, s.total_purchase_price,
                    s.expected_profit, s.expected_profit_margin, s.status, s.purchase_order_id,
-                   s.created_at, s.updated_at, src.name as source_name
+                   s.asking_price, s.created_at, s.updated_at, src.name as source_name
             FROM dbo.PurchaseCalculatorSessions s
             LEFT JOIN dbo.Sources src ON s.source_id = src.source_id
             {where_clause}
@@ -148,7 +148,7 @@ class PurchaseCalculatorRepo:
         params = {"session_id": session_id}
         
         for key, value in updates.items():
-            if key in ["session_name", "source_id", "status"]:
+            if key in ["session_name", "source_id", "status", "asking_price"]:
                 set_clauses.append(f"{key} = :{key}")
                 params[key] = value
         

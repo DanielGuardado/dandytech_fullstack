@@ -27,6 +27,7 @@ export interface CalculatorSession {
   expected_profit_margin?: number;
   status: 'draft' | 'finalized' | 'converted_to_po';
   purchase_order_id?: number;
+  asking_price?: number;
   created_at: string;
   updated_at: string;
   source_name?: string;
@@ -39,12 +40,14 @@ export interface CalculatorSessionDetail extends CalculatorSession {
 export interface CalculatorSessionCreate {
   session_name?: string;
   source_id?: number;
+  asking_price?: number;
 }
 
 export interface CalculatorSessionUpdate {
   session_name?: string;
   source_id?: number;
   status?: 'draft' | 'finalized' | 'converted_to_po';
+  asking_price?: number;
 }
 
 export interface CalculatorSessionListResponse {
@@ -94,6 +97,7 @@ export interface CalculatorItem {
   quantity: number;
   notes?: string;
   created_at: string;
+  
   
   // Display fields
   platform_name?: string;

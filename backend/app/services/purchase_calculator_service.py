@@ -50,12 +50,12 @@ class PurchaseCalculatorService:
 
     # -------- Session Management --------
 
-    def create_session(self, session_name: Optional[str] = None, source_id: Optional[int] = None) -> Dict:
+    def create_session(self, session_name: Optional[str] = None, source_id: Optional[int] = None, asking_price: Optional[float] = None) -> Dict:
         """Create a new calculator session"""
         if source_id and not self._validate_source_exists(source_id):
             raise AppError("Invalid source_id", 400)
         
-        session = self.repo.create_session(session_name, source_id)
+        session = self.repo.create_session(session_name, source_id, asking_price)
         self.db.commit()
         return session
 

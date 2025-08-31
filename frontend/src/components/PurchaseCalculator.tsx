@@ -97,12 +97,6 @@ const PurchaseCalculator: React.FC = () => {
         setLoading(true);
         const sessionDetail = await calculatorService.getSession(session.session_id);
         
-        // Debug logging to check if detailed fields are present on load
-        if (sessionDetail.items && sessionDetail.items.length > 0) {
-          console.log('DEBUG: Session load - First item data:', sessionDetail.items[0]);
-          console.log('DEBUG: Session load - base_variable_fee:', sessionDetail.items[0].base_variable_fee);
-          console.log('DEBUG: Session load - sales_tax:', sessionDetail.items[0].sales_tax);
-        }
         
         setSessionData(sessionDetail);
         setSessionId(session.session_id);
@@ -452,6 +446,79 @@ const PurchaseCalculator: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Asking Price Input */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
+                    Asking Price 💰
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Enter seller's asking price for entire lot"
+                    value={sessionData?.asking_price?.toString() || ''}
+                    onChange={(e) => {
+                      const inputValue = e.target.value;
+                      const numericValue = inputValue === '' ? undefined : parseFloat(inputValue);
+                      setSessionData(prev => prev ? { ...prev, asking_price: numericValue } : prev);
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#007aff';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(0, 122, 255, 0.15)';
+                    }}
+                    onBlur={async (e) => {
+                      e.target.style.borderColor = '#dee2e6';
+                      e.target.style.boxShadow = 'none';
+                      
+                      // Check if Enter was just pressed to avoid duplicate API calls
+                      const enterPressed = e.target.getAttribute('data-enter-pressed');
+                      if (enterPressed) {
+                        e.target.removeAttribute('data-enter-pressed');
+                        return;
+                      }
+                      
+                      const inputValue = e.target.value;
+                      const numericValue = inputValue === '' ? undefined : parseFloat(inputValue);
+                      
+                      if (sessionId) {
+                        try {
+                          await calculatorService.updateSession(sessionId, { asking_price: numericValue });
+                          setSessionData(prev => prev ? { ...prev, asking_price: numericValue } : prev);
+                        } catch (err) {
+                          setError(`Failed to update asking price: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                        }
+                      }
+                    }}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') {
+                        const inputValue = (e.target as HTMLInputElement).value;
+                        const numericValue = inputValue === '' ? undefined : parseFloat(inputValue);
+                        
+                        if (sessionId) {
+                          try {
+                            await calculatorService.updateSession(sessionId, { asking_price: numericValue });
+                            setSessionData(prev => prev ? { ...prev, asking_price: numericValue } : prev);
+                            // Set a flag to prevent blur from firing immediately after Enter
+                            (e.target as HTMLInputElement).setAttribute('data-enter-pressed', 'true');
+                            (e.target as HTMLInputElement).blur();
+                          } catch (err) {
+                            setError(`Failed to update asking price: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                          }
+                        }
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      fontFamily: 'monospace',
+                      textAlign: 'right'
+                    }}
+                  />
+                </div>
+
                 {/* Estimated Summary Stats */}
                 <div>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: '#495057' }}>
@@ -498,7 +565,12 @@ const PurchaseCalculator: React.FC = () => {
                     </div>
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e9ecef' }}>
-                      <span style={{ fontSize: '12px', color: '#6c757d' }}>Profit Margin:</span>
+                      <span 
+                        style={{ fontSize: '12px', color: '#6c757d', cursor: 'help' }}
+                        title="Percentage of revenue kept as profit after all costs. (Profit ÷ Revenue)"
+                      >
+                        Profit Margin 📊:
+                      </span>
                       <span style={{ 
                         fontSize: '12px', 
                         fontWeight: 'bold', 
@@ -510,28 +582,164 @@ const PurchaseCalculator: React.FC = () => {
                     </div>
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e9ecef' }}>
-                      <span style={{ fontSize: '12px', color: '#6c757d' }}>Avg % of Market:</span>
+                      <span 
+                        style={{ fontSize: '12px', color: '#6c757d', cursor: 'help' }}
+                        title="Average percentage of market price you're paying across all items. Higher is better for resale value."
+                      >
+                        Avg % of Market 🎯:
+                      </span>
                       <span style={{ 
                         fontSize: '12px', 
                         fontWeight: 'bold', 
                         fontFamily: 'monospace',
-                        color: (dynamicSessionData.average_percent_of_market || 0) <= 80 ? '#28a745' : '#ffc107'
+                        color: calculatorService.getPercentOfMarketColor(dynamicSessionData.average_percent_of_market || 0)
                       }}>
                         {calculatorService.formatPercentage(dynamicSessionData.average_percent_of_market || 0)}
                       </span>
                     </div>
                     
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                      <span style={{ fontSize: '12px', color: '#6c757d' }}>Avg ROI:</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e9ecef' }}>
+                      <span 
+                        style={{ fontSize: '12px', color: '#6c757d', cursor: 'help' }}
+                        title="Average return on investment. Shows profit as percentage of cost. (Profit ÷ Cost)"
+                      >
+                        Avg ROI 📈:
+                      </span>
                       <span style={{ 
                         fontSize: '12px', 
                         fontWeight: 'bold', 
                         fontFamily: 'monospace',
-                        color: calculatorService.getProfitMarginColor(dynamicSessionData.average_roi || 0, 30)
+                        color: calculatorService.getROIColor(dynamicSessionData.average_roi || 0)
                       }}>
                         {calculatorService.formatPercentage(dynamicSessionData.average_roi || 0)}
                       </span>
                     </div>
+
+                    {/* Asking Price Comparison */}
+                    {dynamicSessionData.asking_price && dynamicSessionData.total_purchase_price && (() => {
+                      const dealQuality = calculatorService.getDealQualityRating(dynamicSessionData.asking_price, dynamicSessionData.total_purchase_price);
+                      const profitAtAsking = calculatorService.calculateProfitAtAskingPrice(dynamicSessionData.total_estimated_revenue || 0, dynamicSessionData.asking_price);
+                      const marginAtAsking = calculatorService.calculateMarginAtAskingPrice(dynamicSessionData.total_estimated_revenue || 0, dynamicSessionData.asking_price);
+                      const roiAtAsking = calculatorService.calculateROIAtAskingPrice(dynamicSessionData.total_estimated_revenue || 0, dynamicSessionData.asking_price);
+                      const percentOfMarket = calculatorService.calculatePercentOfMarketForAskingPrice(dynamicSessionData.asking_price, dynamicSessionData.total_market_value || 0);
+
+                      return (
+                        <div style={{ 
+                          background: '#f8f9fa',
+                          margin: '4px -4px',
+                          padding: '8px',
+                          borderRadius: '4px',
+                          border: '1px solid #dee2e6'
+                        }}>
+                          {/* Header Comparison */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <span 
+                              style={{ fontSize: '12px', color: '#6c757d', cursor: 'help' }}
+                              title="Comparison of seller's asking price vs your calculated maximum purchase price"
+                            >
+                              Asking vs Max 💰:
+                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                              <span style={{ 
+                                fontSize: '12px', 
+                                fontWeight: 'bold', 
+                                fontFamily: 'monospace',
+                                color: dealQuality.color
+                              }}>
+                                {calculatorService.formatCurrency(dynamicSessionData.asking_price)} vs {calculatorService.formatCurrency(dynamicSessionData.total_purchase_price)}
+                              </span>
+                              <span style={{ 
+                                fontSize: '10px', 
+                                fontWeight: 'bold',
+                                color: dealQuality.color
+                              }}>
+                                {dynamicSessionData.asking_price <= dynamicSessionData.total_purchase_price ? 
+                                  `✅ GOOD DEAL (Save $${calculatorService.formatCurrency(dynamicSessionData.total_purchase_price - dynamicSessionData.asking_price).replace('$', '')}) | ${dealQuality.percentage.toFixed(0)}% of max` : 
+                                  `❌ OVERPRICED ($${calculatorService.formatCurrency(dynamicSessionData.asking_price - dynamicSessionData.total_purchase_price).replace('$', '')} over) | ${dealQuality.percentage.toFixed(0)}% of max`
+                                }
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Detailed Metrics */}
+                          <div style={{ 
+                            borderTop: '1px solid #dee2e6',
+                            paddingTop: '8px',
+                            fontSize: '11px',
+                            display: 'grid',
+                            gap: '4px'
+                          }}>
+                            <div style={{ fontWeight: 'bold', color: '#495057', marginBottom: '4px' }}>
+                              📊 If Buying at Asking Price:
+                            </div>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: '#6c757d' }}>Profit:</span>
+                              <span style={{ 
+                                fontFamily: 'monospace', 
+                                fontWeight: 'bold',
+                                color: profitAtAsking >= 0 ? '#28a745' : '#dc3545'
+                              }}>
+                                {calculatorService.formatCurrency(profitAtAsking)} <span style={{ color: '#6c757d', fontSize: '9px' }}>(was {calculatorService.formatCurrency(dynamicSessionData.expected_profit || 0)})</span>
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: '#6c757d' }}>Margin:</span>
+                              <span style={{ 
+                                fontFamily: 'monospace', 
+                                fontWeight: 'bold',
+                                color: calculatorService.getProfitMarginColor(marginAtAsking)
+                              }}>
+                                {calculatorService.formatPercentage(marginAtAsking)} <span style={{ color: '#6c757d', fontSize: '9px' }}>(was {calculatorService.formatPercentage(dynamicSessionData.expected_profit_margin || 0)})</span>
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: '#6c757d' }}>ROI:</span>
+                              <span style={{ 
+                                fontFamily: 'monospace', 
+                                fontWeight: 'bold',
+                                color: calculatorService.getROIColor(roiAtAsking)
+                              }}>
+                                {calculatorService.formatPercentage(roiAtAsking)} <span style={{ color: '#6c757d', fontSize: '9px' }}>(was {calculatorService.formatPercentage(dynamicSessionData.average_roi || 0)})</span>
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: '#6c757d' }}>% of Market:</span>
+                              <span style={{ 
+                                fontFamily: 'monospace', 
+                                fontWeight: 'bold',
+                                color: calculatorService.getPercentOfMarketColor(percentOfMarket)
+                              }}>
+                                {calculatorService.formatPercentage(percentOfMarket)}
+                              </span>
+                            </div>
+
+                            <div style={{ 
+                              marginTop: '6px',
+                              paddingTop: '6px',
+                              borderTop: '1px solid #dee2e6',
+                              display: 'flex', 
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}>
+                              <span style={{ color: '#6c757d', fontWeight: 'bold' }}>Deal Rating:</span>
+                              <span style={{ 
+                                fontWeight: 'bold',
+                                color: dealQuality.color,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                {dealQuality.emoji} {dealQuality.rating} ({dealQuality.percentage.toFixed(1)}% of max)
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 

@@ -111,16 +111,16 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
           <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Product</th>
           <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Variant</th>
           <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Qty</th>
-          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Base Cost</th>
+          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Current market value from PriceCharting or manual entry">Market $</th>
+          <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Percentage of market price for this purchase">% of Market 🎯</th>
+          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Your maximum purchase price based on target profit">Purchase $</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Markup</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Sale $</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Fees</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Net $</th>
-          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Purchase $</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Earnings</th>
-          <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>% of Market</th>
-          <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Margin %</th>
-          <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>ROI %</th>
+          <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Profit margin after all fees and costs">Margin % 📊</th>
+          <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Return on investment (profit as % of cost)">ROI % 📈</th>
           {canEdit && (
             <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Actions</th>
           )}
@@ -135,22 +135,26 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
               borderBottom: '1px solid #e9ecef'
             }}
           >
+            {/* 1. Product */}
             <td style={{ padding: '8px 10px', fontSize: '13px' }}>
               <div style={{ fontWeight: 'bold' }}>
                 {item.product_title || 'Unknown Product'}
                 {item.platform_short_name && ` - ${item.platform_short_name}`}
               </div>
             </td>
+            {/* 2. Variant */}
             <td style={{ padding: '8px 10px', fontSize: '13px' }}>
               {item.variant_type_code || 'Unknown'}
             </td>
+            {/* 3. Qty */}
             <td style={{ padding: '8px 10px', textAlign: 'center', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold' }}>
               {item.quantity}
             </td>
+            {/* 4. Market $ - blue color */}
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <div style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                  {calculatorService.formatCurrency(item.final_base_price || 0)}
+                <div style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#007bff' }}>
+                  {calculatorService.formatCurrency(item.market_price || item.final_base_price || 0)}
                 </div>
                 <div style={{
                   fontSize: '9px',
@@ -170,9 +174,27 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
                 </div>
               </div>
             </td>
+            {/* 5. % of Market - with color coding */}
+            <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold' }}>
+              {item.market_price && item.calculated_purchase_price ? (
+                <span style={{ 
+                  color: calculatorService.getPercentOfMarketColor(
+                    (item.calculated_purchase_price / item.market_price) * 100
+                  )
+                }}>
+                  {`${((item.calculated_purchase_price / item.market_price) * 100).toFixed(1)}%`}
+                </span>
+              ) : '-'}
+            </td>
+            {/* 6. Purchase $ - red color */}
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#dc3545' }}>
+              {item.calculated_purchase_price ? calculatorService.formatCurrency(item.calculated_purchase_price) : '-'}
+            </td>
+            {/* 7. Markup */}
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace' }}>
               {item.markup_amount ? calculatorService.formatCurrency(item.markup_amount) : '-'}
             </td>
+            {/* 8. Sale $ - green color */}
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#28a745' }}>
               {item.estimated_sale_price ? (
                 <CalculatorTooltip content={getSaleTooltip(item)}>
@@ -182,7 +204,8 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
                 </CalculatorTooltip>
               ) : '-'}
             </td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', color: '#dc3545' }}>
+            {/* 9. Fees - gray color */}
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', color: '#6c757d' }}>
               {item.total_fees ? (
                 <CalculatorTooltip content={getFeesTooltip(item)}>
                   <span style={{ cursor: 'help' }}>
@@ -191,7 +214,8 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
                 </CalculatorTooltip>
               ) : '-'}
             </td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold' }}>
+            {/* 10. Net $ - teal color */}
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#17a2b8' }}>
               {item.net_after_fees ? (
                 <CalculatorTooltip content={getNetTooltip(item)}>
                   <span style={{ cursor: 'help' }}>
@@ -200,17 +224,17 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
                 </CalculatorTooltip>
               ) : '-'}
             </td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#007bff' }}>
-              {item.calculated_purchase_price ? calculatorService.formatCurrency(item.calculated_purchase_price) : '-'}
+            {/* 11. Earnings - conditional color */}
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold' }}>
+              {item.net_after_fees && item.calculated_purchase_price ? (
+                <span style={{ 
+                  color: (item.net_after_fees - item.calculated_purchase_price) >= 0 ? '#28a745' : '#dc3545'
+                }}>
+                  {calculatorService.formatCurrency(item.net_after_fees - item.calculated_purchase_price)}
+                </span>
+              ) : '-'}
             </td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#28a745' }}>
-              {item.net_after_fees && item.calculated_purchase_price ? 
-                calculatorService.formatCurrency(item.net_after_fees - item.calculated_purchase_price) : '-'}
-            </td>
-            <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-              {item.market_price && item.calculated_purchase_price ? 
-                `${((item.calculated_purchase_price / item.market_price) * 100).toFixed(1)}%` : '-'}
-            </td>
+            {/* 12. Margin % - with new color coding */}
             <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold' }}>
               {item.net_after_fees && item.calculated_purchase_price ? (
                 <span style={{ 
@@ -230,16 +254,27 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
                 </span>
               ) : '-'}
             </td>
+            {/* 13. ROI % - with new color coding */}
             <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold' }}>
               {item.net_after_fees && item.calculated_purchase_price ? (
-                calculatorService.formatPercentage(
-                  calculatorService.calculateROIFromNet(
-                    item.net_after_fees, 
-                    item.calculated_purchase_price
+                <span style={{ 
+                  color: calculatorService.getROIColor(
+                    calculatorService.calculateROIFromNet(
+                      item.net_after_fees, 
+                      item.calculated_purchase_price
+                    )
                   )
-                )
+                }}>
+                  {calculatorService.formatPercentage(
+                    calculatorService.calculateROIFromNet(
+                      item.net_after_fees, 
+                      item.calculated_purchase_price
+                    )
+                  )}
+                </span>
               ) : '-'}
             </td>
+            {/* 14. Actions */}
             {canEdit && (
               <td style={{ padding: '6px 8px', textAlign: 'center' }}>
                 <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>

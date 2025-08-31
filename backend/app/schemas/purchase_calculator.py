@@ -26,11 +26,13 @@ class PlatformMarkupUpdate(BaseModel):
 class CalculatorSessionCreate(BaseModel):
     session_name: Optional[str] = None
     source_id: Optional[int] = None
+    asking_price: Optional[float] = Field(None, ge=0, description="Total asking price for the entire lot")
 
 class CalculatorSessionUpdate(BaseModel):
     session_name: Optional[str] = None
     source_id: Optional[int] = None
     status: Optional[str] = Field(None, pattern="^(draft|finalized|converted_to_po)$")
+    asking_price: Optional[float] = Field(None, ge=0, description="Total asking price for the entire lot")
 
 class CalculatorSession(BaseModel):
     session_id: int
@@ -44,6 +46,7 @@ class CalculatorSession(BaseModel):
     expected_profit_margin: Optional[float] = None
     status: str
     purchase_order_id: Optional[int] = None
+    asking_price: Optional[float] = None
     created_at: datetime
     updated_at: datetime
 
@@ -113,6 +116,7 @@ class CalculatorItem(BaseModel):
     # Additional fields for UI display
     platform_name: Optional[str] = None
     platform_short_name: Optional[str] = None
+    
 
 # -------- Calculation Schemas
 
