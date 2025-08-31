@@ -69,7 +69,8 @@ const CalculatorItemTable: React.FC<CalculatorItemTableProps> = ({
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Fees</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Net $</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Purchase $</th>
-          <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Profit %</th>
+          <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Margin %</th>
+          <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>ROI %</th>
           {canEdit && (
             <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Actions</th>
           )}
@@ -123,25 +124,33 @@ const CalculatorItemTable: React.FC<CalculatorItemTableProps> = ({
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#007bff' }}>
               {item.calculated_purchase_price ? calculatorService.formatCurrency(item.calculated_purchase_price) : '-'}
             </td>
-            <td style={{ padding: '8px 10px', textAlign: 'center', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-              {item.estimated_sale_price && item.calculated_purchase_price && item.total_fees ? (
+            <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold' }}>
+              {item.net_after_fees && item.calculated_purchase_price ? (
                 <span style={{ 
                   color: calculatorService.getProfitMarginColor(
-                    calculatorService.calculateProfitMargin(
-                      item.estimated_sale_price, 
-                      item.calculated_purchase_price, 
-                      item.total_fees
+                    calculatorService.calculateProfitMarginFromNet(
+                      item.net_after_fees, 
+                      item.calculated_purchase_price
                     )
                   )
                 }}>
                   {calculatorService.formatPercentage(
-                    calculatorService.calculateProfitMargin(
-                      item.estimated_sale_price, 
-                      item.calculated_purchase_price, 
-                      item.total_fees
+                    calculatorService.calculateProfitMarginFromNet(
+                      item.net_after_fees, 
+                      item.calculated_purchase_price
                     )
                   )}
                 </span>
+              ) : '-'}
+            </td>
+            <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold' }}>
+              {item.net_after_fees && item.calculated_purchase_price ? (
+                calculatorService.formatPercentage(
+                  calculatorService.calculateROIFromNet(
+                    item.net_after_fees, 
+                    item.calculated_purchase_price
+                  )
+                )
               ) : '-'}
             </td>
             {canEdit && (

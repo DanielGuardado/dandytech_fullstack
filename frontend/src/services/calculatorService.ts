@@ -144,12 +144,37 @@ class CalculatorService {
   // -------- Utility Methods --------
 
   /**
-   * Calculate profit margin percentage from pricing data
+   * Calculate profit margin percentage from pricing data (profit/revenue)
    */
   calculateProfitMargin(salePrice: number, purchasePrice: number, fees: number): number {
     const netAfterFees = salePrice - fees;
     const profit = netAfterFees - purchasePrice;
     return netAfterFees > 0 ? (profit / netAfterFees) * 100 : 0;
+  }
+
+  /**
+   * Calculate profit margin percentage using backend net value (preferred)
+   */
+  calculateProfitMarginFromNet(netAfterFees: number, purchasePrice: number): number {
+    const profit = netAfterFees - purchasePrice;
+    return netAfterFees > 0 ? (profit / netAfterFees) * 100 : 0;
+  }
+
+  /**
+   * Calculate ROI percentage from pricing data (profit/cost)
+   */
+  calculateROI(salePrice: number, purchasePrice: number, fees: number): number {
+    const netAfterFees = salePrice - fees;
+    const profit = netAfterFees - purchasePrice;
+    return purchasePrice > 0 ? (profit / purchasePrice) * 100 : 0;
+  }
+
+  /**
+   * Calculate ROI percentage using backend net value (preferred)
+   */
+  calculateROIFromNet(netAfterFees: number, purchasePrice: number): number {
+    const profit = netAfterFees - purchasePrice;
+    return purchasePrice > 0 ? (profit / purchasePrice) * 100 : 0;
   }
 
   /**

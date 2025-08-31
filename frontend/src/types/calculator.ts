@@ -79,6 +79,19 @@ export interface CalculatorItem {
   target_profit_percentage: number;
   calculated_purchase_price?: number;
   
+  // Detailed calculation breakdown (not stored, calculated on-demand)
+  sales_tax?: number;
+  final_value?: number;
+  base_variable_fee?: number;
+  discounted_variable_fee?: number;
+  transaction_fee?: number;
+  ad_fee?: number;
+  shipping_cost?: number;
+  supplies_cost?: number;
+  regular_cashback?: number;
+  shipping_cashback?: number;
+  total_cashback?: number;
+  
   quantity: number;
   notes?: string;
   created_at: string;

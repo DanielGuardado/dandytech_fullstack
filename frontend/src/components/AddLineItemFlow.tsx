@@ -9,12 +9,14 @@ import {
   PriceChartingResult,
   POLineItemCreate 
 } from '../types/api';
+import { CalculatorConfig, CalculatorItemCreate } from '../types/calculator';
 import { catalogService } from '../services/catalogService';
 import { extractPlatformFromQuery, cleanTitle } from '../utils/platformExtractor';
 import ProductSearch from './ProductSearch';
 import CreateProductPanel from './CreateProductPanel';
 import PriceChartingPanel from './PriceChartingPanel';
 import VariantSelectPanel from './VariantSelectPanel';
+import CalculatorPricingPanel from './CalculatorPricingPanel';
 
 interface AllocationDetails {
   allocation_basis: number;
@@ -24,25 +26,38 @@ interface AllocationDetails {
 }
 
 interface AddLineItemFlowProps {
+  // Mode-agnostic props
   categories: Category[];
   platforms: Platform[];
   variantTypes: VariantType[];
-  currentLineItems: Array<{allocation_basis: number; quantity_expected: number; cost_assignment_method: string}>;
-  onAddItem: (item: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number; platform_short_name?: string }, allocation: AllocationDetails) => void;
   onCancel: () => void;
   defaultVariantMode?: string;
+  
+  // Mode selection
+  mode?: 'purchase_order' | 'calculator';
+  
+  // Purchase Order mode props
+  currentLineItems?: Array<{allocation_basis: number; quantity_expected: number; cost_assignment_method: string}>;
+  onAddItem?: (item: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number; platform_short_name?: string }, allocation: AllocationDetails) => void;
+  
+  // Calculator mode props
+  config?: Record<string, CalculatorConfig>;
+  onAddCalculatorItem?: (item: CalculatorItemCreate & { product_title: string; catalog_product_id: number }) => void;
 }
 
-type FlowStep = 'search' | 'create-product' | 'pc-link' | 'select-variant' | 'create-variant';
+type FlowStep = 'search' | 'create-product' | 'pc-link' | 'select-variant' | 'create-variant' | 'calculator-pricing';
 
 const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   categories,
   platforms,
   variantTypes,
-  currentLineItems,
-  onAddItem,
   onCancel,
-  defaultVariantMode
+  defaultVariantMode,
+  mode = 'purchase_order',
+  currentLineItems = [],
+  onAddItem,
+  config = {},
+  onAddCalculatorItem
 }) => {
   const [currentStep, setCurrentStep] = useState<FlowStep>('search');
   const [loading, setLoading] = useState(false);
@@ -70,10 +85,14 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   const [availableVariants, setAvailableVariants] = useState<ProductVariant[]>([]);
   const [platformHintId, setPlatformHintId] = useState<number | null>(null);
   const [priceChartingTitle, setPriceChartingTitle] = useState<string | null>(null);
+  
+  // Calculator mode state
+  const [selectedVariantForCalculator, setSelectedVariantForCalculator] = useState<ProductVariant | null>(null);
 
-  const handleVariantSelected = (variant: ProductVariant, allocation: AllocationDetails) => {
-    console.log('AddLineItemFlow - Variant selected with allocation:', {
+  const handleVariantSelected = (variant: ProductVariant, allocation?: AllocationDetails) => {
+    console.log('AddLineItemFlow - Variant selected:', {
       source: 'handleVariantSelected',
+      mode: mode,
       variant: variant,
       allocation: allocation,
       selectedProduct: selectedProduct,
@@ -91,42 +110,62 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
       return;
     }
     
-    // Debug: Log the IDs and title we're about to use
-    console.log('Line item creation debug:', {
-      productId: productId,
-      variantId: variant.variant_id,
-      productTitle: productTitle,
-      selectedProductTitle: selectedProduct?.title,
-      priceChartingTitle: priceChartingTitle,
-      originalTitle: newProductData?.title,
-      selectedProductId: selectedProduct?.catalog_product_id,
-      createdProductId: createdProductId
-    });
+    if (mode === 'calculator') {
+      // Calculator mode: Store variant and go to pricing panel
+      setSelectedVariantForCalculator(variant);
+      setCurrentStep('calculator-pricing');
+    } else {
+      // Purchase Order mode: Create line item immediately
+      if (!allocation || !onAddItem) {
+        console.error('Purchase order mode requires allocation data and callback');
+        return;
+      }
+      
+      const lineItem: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number; platform_short_name?: string } = {
+        catalog_product_id: productId,
+        variant_id: variant.variant_id,
+        quantity_expected: allocation.quantity,
+        product_title: productTitle,
+        variant_type_code: variant.variant_type_code,
+        current_market_value: variant.current_market_value || undefined,
+        platform_short_name: platformShortName
+      };
+
+      const allocationData: AllocationDetails = {
+        allocation_basis: allocation.allocation_basis,
+        cost_assignment_method: allocation.cost_assignment_method,
+        allocation_basis_source: allocation.allocation_basis_source,
+        quantity: allocation.quantity
+      };
+
+      onAddItem(lineItem, allocationData);
+      
+      // Reset flow back to search for continuous item addition
+      resetFlow();
+    }
+  };
+  
+  const handleCalculatorItemAdd = (itemData: CalculatorItemCreate) => {
+    const productId = selectedProduct?.catalog_product_id || createdProductId;
+    const productTitle = selectedProduct?.title || priceChartingTitle || newProductData?.title || 'Unknown Product';
     
-    // Create line item data
-    const lineItem: POLineItemCreate & { product_title: string; variant_type_code: string; current_market_value?: number; platform_short_name?: string } = {
+    if (!productId || !onAddCalculatorItem) {
+      console.error('Calculator item creation requires product ID and callback');
+      return;
+    }
+    
+    const calculatorItem = {
+      ...itemData,
       catalog_product_id: productId,
-      variant_id: variant.variant_id,
-      quantity_expected: allocation.quantity,
-      product_title: productTitle,
-      variant_type_code: variant.variant_type_code,
-      current_market_value: variant.current_market_value || undefined,
-      platform_short_name: platformShortName
+      product_title: productTitle
     };
-
-    const allocationData: AllocationDetails = {
-      allocation_basis: allocation.allocation_basis,
-      cost_assignment_method: allocation.cost_assignment_method,
-      allocation_basis_source: allocation.allocation_basis_source,
-      quantity: allocation.quantity
-    };
-
-    onAddItem(lineItem, allocationData);
+    
+    onAddCalculatorItem(calculatorItem);
     
     // Reset flow back to search for continuous item addition
     resetFlow();
   };
-  
+
   const resetFlow = () => {
     setCurrentStep('search');
     setSearchQuery('');
@@ -137,6 +176,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
     setAvailableVariants([]);
     setPlatformHintId(null);
     setPriceChartingTitle(null);
+    setSelectedVariantForCalculator(null);
     setError(null);
   };
 
@@ -305,6 +345,10 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
       case 'create-variant':
         setCurrentStep('pc-link');
         break;
+      case 'calculator-pricing':
+        setCurrentStep('select-variant');
+        setSelectedVariantForCalculator(null);
+        break;
     }
   };
 
@@ -329,7 +373,9 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
         minHeight: '32px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1d1d1f', margin: '0' }}>Add Line Item</h4>
+          <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1d1d1f', margin: '0' }}>
+            {mode === 'calculator' ? 'Add Calculator Item' : 'Add Line Item'}
+          </h4>
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -470,6 +516,17 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           loading={loading}
           showCreateVariant={false}
           defaultVariantMode={internalDefaultVariantMode}
+        />
+      )}
+
+      {currentStep === 'calculator-pricing' && selectedVariantForCalculator && (
+        <CalculatorPricingPanel
+          selectedVariant={selectedVariantForCalculator}
+          productTitle={selectedProduct?.title || priceChartingTitle || newProductData?.title || 'Unknown Product'}
+          platforms={platforms}
+          config={config}
+          onAddItem={handleCalculatorItemAdd}
+          loading={loading}
         />
       )}
 
