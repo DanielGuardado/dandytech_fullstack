@@ -35,14 +35,14 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
   const isPlatformManualSensitive = selectedVariant?.platform_manual_sensitive === true;
   
 
-  // Set default hasManual to true for all CIB items
+  // Set default hasManual based on platform manual sensitivity
   React.useEffect(() => {
     if (selectedVariant?.variant_type_code === 'CIB') {
-      // Always default to true (has manual) for CIB items regardless of platform
-      // This is the logical default since most CIB items do include manuals
-      setHasManual(true);
+      // For manual-sensitive platforms: default to true (has manual)
+      // For non-manual-sensitive platforms: default to false (no manual)
+      setHasManual(isPlatformManualSensitive);
     }
-  }, [selectedVariant?.variant_type_code]);
+  }, [selectedVariant?.variant_type_code, isPlatformManualSensitive]);
 
   // Calculated values
   const [calculations, setCalculations] = useState<{
