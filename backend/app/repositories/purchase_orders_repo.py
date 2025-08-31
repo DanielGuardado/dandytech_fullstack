@@ -122,7 +122,8 @@ class PurchaseOrdersRepo:
                 cp.title AS product_title,
                 c.name   AS category_name,
                 vt.code  AS variant_type_code,
-                p.short_name AS platform_short
+                p.short_name AS platform_short,
+                p.video_game_manual_sensitive AS platform_manual_sensitive
                 FROM dbo.ListingVariants v
                 JOIN dbo.CatalogProducts cp ON cp.catalog_product_id = v.catalog_product_id
                 JOIN dbo.Categories c ON c.category_id = cp.category_id

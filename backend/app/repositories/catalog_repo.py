@@ -135,16 +135,18 @@ class CatalogRepo:
     def variants_for_products(self, product_ids: List[int]) -> Dict[int, List[Dict]]:
         if not product_ids:
             return {}
-        rows = self.db.execute(
-            text(f"""
-                SELECT v.variant_id, v.catalog_product_id, v.variant_type_id, vt.code AS variant_type_code,
-                       vt.display_name, v.current_market_value, v.default_list_price, v.updated_at
-                FROM dbo.ListingVariants v
-                JOIN dbo.VariantTypes vt ON vt.variant_type_id = v.variant_type_id
-                WHERE v.is_active = 1 AND v.catalog_product_id IN ({",".join(str(i) for i in product_ids)})
-                ORDER BY v.catalog_product_id, vt.display_name
-            """)
-        ).mappings().all()
+        query_sql = f"""
+            SELECT v.variant_id, v.catalog_product_id, v.variant_type_id, vt.code AS variant_type_code,
+                   vt.display_name, v.current_market_value, v.default_list_price, v.updated_at,
+                   p.short_name AS platform_short, p.video_game_manual_sensitive AS platform_manual_sensitive
+            FROM dbo.ListingVariants v
+            JOIN dbo.VariantTypes vt ON vt.variant_type_id = v.variant_type_id
+            LEFT JOIN dbo.CatalogProductGames cpg ON cpg.catalog_product_id = v.catalog_product_id
+            LEFT JOIN dbo.Platforms p ON p.platform_id = cpg.platform_id
+            WHERE v.is_active = 1 AND v.catalog_product_id IN ({",".join(str(i) for i in product_ids)})
+            ORDER BY v.catalog_product_id, vt.display_name
+        """
+        rows = self.db.execute(text(query_sql)).mappings().all()
         out: Dict[int, List[Dict]] = {}
         for r in rows:
             out.setdefault(r["catalog_product_id"], []).append(dict(r))

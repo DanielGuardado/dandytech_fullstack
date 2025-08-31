@@ -90,6 +90,8 @@ class CatalogService:
                     "display_name": v["display_name"],
                     "current_market_value": float(v["current_market_value"]) if v["current_market_value"] is not None else None,
                     "default_list_price": float(v["default_list_price"]) if v["default_list_price"] is not None else None,
+                    "platform_short": v.get("platform_short"),
+                    "platform_manual_sensitive": v.get("platform_manual_sensitive"),
                 })
             items.append({
                 "catalog_product_id": r["catalog_product_id"],

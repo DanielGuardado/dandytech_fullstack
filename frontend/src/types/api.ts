@@ -109,6 +109,8 @@ export interface ProductVariant {
   display_name: string;
   current_market_value?: number;
   default_list_price?: number;
+  platform_short?: string;
+  platform_manual_sensitive?: boolean;
 }
 
 export interface CatalogSearchResponse {

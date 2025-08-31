@@ -10,6 +10,8 @@ class CatalogSearchResponseItemVariant(BaseModel):
     display_name: str
     current_market_value: Optional[float] = None
     default_list_price: Optional[float] = None
+    platform_short: Optional[str] = None
+    platform_manual_sensitive: Optional[bool] = None
 
 class CatalogSearchResponseItem(BaseModel):
     catalog_product_id: int

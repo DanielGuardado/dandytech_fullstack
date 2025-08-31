@@ -31,6 +31,19 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
   const [hasManual, setHasManual] = useState<boolean>(true);
   const [customDeductions, setCustomDeductions] = useState<string>('');
 
+  // Platform manual sensitivity
+  const isPlatformManualSensitive = selectedVariant?.platform_manual_sensitive === true;
+  
+
+  // Set default hasManual to true for all CIB items
+  React.useEffect(() => {
+    if (selectedVariant?.variant_type_code === 'CIB') {
+      // Always default to true (has manual) for CIB items regardless of platform
+      // This is the logical default since most CIB items do include manuals
+      setHasManual(true);
+    }
+  }, [selectedVariant?.variant_type_code]);
+
   // Calculated values
   const [calculations, setCalculations] = useState<{
     estimatedSalePrice: number;
@@ -105,14 +118,13 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
       return;
     }
 
-    // Calculate deductions for CIB items without manual
+    // Calculate deductions for CIB items without manual (only for manual-sensitive platforms)
     let deductions = 0;
     const customDeductionAmount = parseFloat(customDeductions) || 0;
     
-    // Auto deduction for CIB without manual (assuming we'll add logic to detect manual-sensitive platforms)
     const isCIB = selectedVariant.variant_type_code === 'CIB';
-    if (isCIB && !hasManual && customDeductionAmount === 0) {
-      deductions = markup; // Default to markup amount
+    if (isCIB && isPlatformManualSensitive && !hasManual && customDeductionAmount === 0) {
+      deductions = markup; // Default to markup amount (only for manual-sensitive platforms)
     } else if (customDeductionAmount > 0) {
       deductions = customDeductionAmount;
     }
@@ -196,14 +208,14 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
     
     if (!calculations) return;
 
-    // Calculate deductions for submission
+    // Calculate deductions for submission (only for manual-sensitive platforms)
     const isCIB = selectedVariant.variant_type_code === 'CIB';
     const markupValue = parseFloat(markupAmount) || 0;
     const customDeductionAmount = parseFloat(customDeductions) || 0;
     let finalDeductions = 0;
     let deductionReasons: Record<string, number> = {};
     
-    if (isCIB && !hasManual && customDeductionAmount === 0) {
+    if (isCIB && isPlatformManualSensitive && !hasManual && customDeductionAmount === 0) {
       finalDeductions = markupValue;
       deductionReasons = { "no_manual": markupValue };
     } else if (customDeductionAmount > 0) {
@@ -481,15 +493,28 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
         {/* CIB Manual and Deductions Section */}
         {selectedVariant.variant_type_code === 'CIB' && (
           <div style={{
-            background: '#fff3cd',
-            border: '1px solid #ffeaa7',
+            background: isPlatformManualSensitive ? '#fff3cd' : '#d1ecf1',
+            border: isPlatformManualSensitive ? '1px solid #ffeaa7' : '1px solid #bee5eb',
             borderRadius: '4px',
             padding: '12px',
             marginTop: '8px'
           }}>
-            <h5 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 'bold', color: '#856404' }}>
-              📋 CIB Item Options
+            <h5 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: 'bold', color: isPlatformManualSensitive ? '#856404' : '#0c5460' }}>
+              {isPlatformManualSensitive ? '📋 CIB Item Options' : '📋 CIB Tracking (No price impact)'}
             </h5>
+            
+            {/* Platform Information */}
+            {!isPlatformManualSensitive && (
+              <div style={{ 
+                fontSize: '11px', 
+                color: '#0c5460', 
+                marginBottom: '8px',
+                fontStyle: 'italic'
+              }}>
+                ℹ️ Note: This platform doesn't differentiate CIB pricing by manual inclusion. 
+                These options are for inventory tracking only.
+              </div>
+            )}
             
             {/* Manual Checkbox */}
             <div style={{ marginBottom: '8px' }}>
@@ -513,7 +538,7 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
                   }}
                 />
                 📖 Includes Manual
-                {!hasManual && (
+                {!hasManual && isPlatformManualSensitive && (
                   <span style={{ color: '#dc3545', fontSize: '10px', marginLeft: '4px' }}>
                     (Will deduct ${parseFloat(markupAmount) || 0} from sale price)
                   </span>
