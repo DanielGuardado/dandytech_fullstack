@@ -303,6 +303,25 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
     parseFloat(targetProfitPercentage) >= 0 &&
     parseInt(quantity) > 0;
 
+  // Keyboard handler for Enter key submission
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Handle Enter key for form submission
+      if (e.key === 'Enter' && !loading && isFormValid) {
+        const target = e.target as HTMLElement;
+        
+        // Don't submit if typing in notes field (allow multi-line input)
+        if (target.tagName === 'TEXTAREA') return;
+        
+        e.preventDefault();
+        handleSubmit(e as any);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [loading, isFormValid, handleSubmit]);
+
   return (
     <div style={{ 
       display: 'flex',

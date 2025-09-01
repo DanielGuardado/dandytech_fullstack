@@ -93,7 +93,7 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
     if (selectedVariant) return; // Only handle keyboard navigation when selecting variants
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (availableVariants.length === 0) return;
+      if (availableVariants.length === 0 || loading) return;
 
       switch (e.key) {
         case 'ArrowDown':
@@ -187,7 +187,7 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
     if (!selectedVariant) return; // Only when in allocation mode
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && isFormValid) {
+      if (e.key === 'Enter' && isFormValid && !loading) {
         e.preventDefault();
         handleAddToOrder();
       }
@@ -195,7 +195,7 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedVariant, isFormValid, handleAddToOrder]);
+  }, [selectedVariant, isFormValid, handleAddToOrder, loading]);
 
   return (
     <div className="variant-select-panel">
@@ -234,7 +234,11 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
                   <div 
                     key={variant.variant_id}
                     className={`variant-item ${index === selectedVariantIndex ? 'selected' : ''}`}
-                    onClick={() => handleVariantSelect(variant)}
+                    onClick={loading ? undefined : () => handleVariantSelect(variant)}
+                    style={{
+                      opacity: loading ? 0.6 : 1,
+                      cursor: loading ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     <div className="variant-info">
                       <div className="variant-name">{variant.display_name || `${variant.variant_type_code || 'Unknown'} Variant`}</div>

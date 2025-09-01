@@ -40,7 +40,7 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
   // Add keyboard event listener for navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!hasSearched || results.length === 0) return;
+      if (!hasSearched || results.length === 0 || loading) return;
 
       switch (e.key) {
         case 'ArrowDown':
@@ -67,7 +67,7 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
     // Add event listener to the document
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [hasSearched, results, selectedIndex, onLink, onSkip]);
+  }, [hasSearched, results, selectedIndex, onLink, onSkip, loading]);
 
   const handleSearch = () => {
     onSearch(searchQuery, upc);
@@ -134,7 +134,7 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
                 <button onClick={handleSearch} className="retry-button">
                   Try Different Search
                 </button>
-                <button onClick={onSkip} className="skip-button">
+                <button onClick={onSkip} className="skip-button" disabled={loading}>
                   Skip PriceCharting (Create Manual Variants)
                 </button>
               </div>
@@ -153,7 +153,11 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
                   <div 
                     key={index}
                     className={`pc-result-item ${index === selectedIndex ? 'selected' : ''}`}
-                    onClick={() => onLink(result.id, result)}
+                    onClick={loading ? undefined : () => onLink(result.id, result)}
+                    style={{
+                      opacity: loading ? 0.6 : 1,
+                      cursor: loading ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     <div className="pc-result-info">
                       <div className="pc-result-title">{result.title}</div>
@@ -169,7 +173,7 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
               </div>
 
               <div className="pc-actions">
-                <button onClick={onSkip} className="skip-link-button">
+                <button onClick={onSkip} className="skip-link-button" disabled={loading}>
                   None of these match - Create Manual Variants
                 </button>
               </div>

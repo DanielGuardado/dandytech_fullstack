@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   Category, 
   Platform, 
@@ -62,6 +62,8 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   const [currentStep, setCurrentStep] = useState<FlowStep>('search');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [transitioning, setTransitioning] = useState(false);
+  const [lastActionTime, setLastActionTime] = useState(0);
 
   // Flow state
   const [searchQuery, setSearchQuery] = useState('');
@@ -100,6 +102,31 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
     if (!platformMode) return null;
     return videoGamePlatforms.find(p => p.platform_id === platformMode);
   }, [platformMode, videoGamePlatforms]);
+
+  // Helper to prevent rapid actions
+  const isProcessing = loading || transitioning;
+  const COOLDOWN_DELAY = 300; // ms
+
+  const withTransition = useCallback((action: () => void | Promise<void>) => {
+    const now = Date.now();
+    if (now - lastActionTime < COOLDOWN_DELAY || isProcessing) {
+      return; // Block if in cooldown or processing
+    }
+
+    setTransitioning(true);
+    setLastActionTime(now);
+    
+    const result = action();
+    
+    if (result instanceof Promise) {
+      result.finally(() => {
+        setTimeout(() => setTransitioning(false), COOLDOWN_DELAY);
+      });
+    } else {
+      setTimeout(() => setTransitioning(false), COOLDOWN_DELAY);
+    }
+  }, [lastActionTime, isProcessing]);
+
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [newProductData, setNewProductData] = useState<CreateProductRequest | null>(null);
   const [createdProductId, setCreatedProductId] = useState<number | null>(null);
@@ -134,8 +161,10 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
     
     if (mode === 'calculator') {
       // Calculator mode: Store variant and go to pricing panel
-      setSelectedVariantForCalculator(variant);
-      setCurrentStep('calculator-pricing');
+      withTransition(() => {
+        setSelectedVariantForCalculator(variant);
+        setCurrentStep('calculator-pricing');
+      });
     } else {
       // Purchase Order mode: Create line item immediately
       if (!allocation || !onAddItem) {
@@ -204,33 +233,35 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
 
 
   const handleProductSelected = (product: Product) => {
-    setSelectedProduct(product);
-    setAvailableVariants(product.variants);
-    
-    if (product.variants.length === 0) {
-      // No variants exist - need to create them
-      const category = categories.find(c => c.category_id === product.category_id);
+    withTransition(() => {
+      setSelectedProduct(product);
+      setAvailableVariants(product.variants);
       
-      if (category?.name === 'Video Game') {
-        // Video game without variants - redirect to PriceCharting link
-        setCreatedProductId(product.catalog_product_id);
-        setNewProductData({
-          title: product.title,
-          category_id: product.category_id,
-          brand: product.brand,
-          upc: product.upc,
-          game: product.platform ? { platform_id: product.platform.platform_id } : undefined
-        } as CreateProductRequest);
-        setCurrentStep('pc-link');
+      if (product.variants.length === 0) {
+        // No variants exist - need to create them
+        const category = categories.find(c => c.category_id === product.category_id);
+        
+        if (category?.name === 'Video Game') {
+          // Video game without variants - redirect to PriceCharting link
+          setCreatedProductId(product.catalog_product_id);
+          setNewProductData({
+            title: product.title,
+            category_id: product.category_id,
+            brand: product.brand,
+            upc: product.upc,
+            game: product.platform ? { platform_id: product.platform.platform_id } : undefined
+          } as CreateProductRequest);
+          setCurrentStep('pc-link');
+        } else {
+          // Non-game without variants - go to manual variant creation
+          setCreatedProductId(product.catalog_product_id);
+          setCurrentStep('create-variant');
+        }
       } else {
-        // Non-game without variants - go to manual variant creation
-        setCreatedProductId(product.catalog_product_id);
-        setCurrentStep('create-variant');
+        // Has variants - normal flow
+        setCurrentStep('select-variant');
       }
-    } else {
-      // Has variants - normal flow
-      setCurrentStep('select-variant');
-    }
+    });
   };
 
   const handleCreateNewProduct = (query: string) => {
@@ -602,6 +633,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
             onProductSelected={handleProductSelected}
             onCreateNew={handleCreateNewProduct}
             platformMode={selectedPlatform}
+            disabled={isProcessing}
           />
         )}
 
@@ -611,7 +643,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           platforms={platforms}
           initialQuery={searchQuery}
           onProductCreated={handleProductCreated}
-          loading={loading}
+          loading={isProcessing}
           platformHintId={platformHintId}
         />
       )}
@@ -624,7 +656,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           onSearch={handlePriceChartingSearch}
           onLink={handlePriceChartingLink}
           onSkip={handleSkipPriceCharting}
-          loading={loading}
+          loading={isProcessing}
         />
       )}
 
@@ -635,7 +667,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           onVariantSelected={handleVariantSelected}
           onCreateVariant={handleCreateVariant}
           currentLineItems={currentLineItems}
-          loading={loading}
+          loading={isProcessing}
           showCreateVariant={true}
           defaultVariantMode={internalDefaultVariantMode}
           mode={mode}
@@ -652,7 +684,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           onVariantSelected={handleVariantSelected}
           onCreateVariant={handleCreateVariant}
           currentLineItems={currentLineItems}
-          loading={loading}
+          loading={isProcessing}
           showCreateVariant={false}
           defaultVariantMode={internalDefaultVariantMode}
           mode={mode}
@@ -669,7 +701,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           platforms={platforms}
           config={config}
           onAddItem={handleCalculatorItemAdd}
-          loading={loading}
+          loading={isProcessing}
           manualIncludedMode={manualIncludedMode}
         />
       )}

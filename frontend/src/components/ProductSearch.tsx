@@ -6,22 +6,26 @@ interface ProductSearchProps {
   onProductSelected: (product: Product) => void;
   onCreateNew: (query: string) => void;
   platformMode?: Platform | null;
+  disabled?: boolean;
 }
 
 const ProductSearch: React.FC<ProductSearchProps> = ({
   onProductSelected,
   onCreateNew,
-  platformMode
+  platformMode,
+  disabled = false
 }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const searchProducts = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
       setResults([]);
+      setHasSearched(false);
       return;
     }
 
@@ -42,9 +46,11 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
       
       const response = await catalogService.searchProducts(finalQuery, platformMode?.short_name);
       setResults(response.items);
+      setHasSearched(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
       setResults([]);
+      setHasSearched(true);
     } finally {
       setLoading(false);
     }
@@ -65,9 +71,12 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
+    setHasSearched(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (disabled) return; // Block all key actions when disabled
+    
     if (results.length > 0) {
       switch (e.key) {
         case 'ArrowDown':
@@ -86,8 +95,8 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
           }
           break;
       }
-    } else if (e.key === 'Enter' && query.trim() && !loading && !error) {
-      // If Enter is pressed and there are no results (but there is a query), create new product
+    } else if (e.key === 'Enter' && query.trim() && hasSearched && !loading && !error) {
+      // If Enter is pressed and there are no results (but there is a query and search has completed), create new product
       handleCreateNew();
     }
   };
@@ -121,6 +130,11 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
           onKeyDown={handleKeyDown}
           className="search-input"
           autoFocus
+          disabled={disabled}
+          style={{
+            opacity: disabled ? 0.6 : 1,
+            cursor: disabled ? 'not-allowed' : 'text'
+          }}
         />
         {loading && <div className="search-spinner">🔍</div>}
       </div>
@@ -132,7 +146,18 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
       )}
 
       <div className="search-results">
-        {query.trim() && !loading && results.length === 0 && !error && (
+        {query.trim() && loading && (
+          <div className="search-loading" style={{
+            padding: '20px',
+            textAlign: 'center',
+            color: '#6c757d',
+            fontSize: '14px'
+          }}>
+            🔍 Searching for "{query}"...
+          </div>
+        )}
+        
+        {query.trim() && hasSearched && !loading && results.length === 0 && !error && (
           <div className="no-results">
             <div className="no-results-message">
               No products found for "{query}"
@@ -143,6 +168,11 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
             <button 
               className="create-new-button"
               onClick={handleCreateNew}
+              disabled={disabled}
+              style={{
+                opacity: disabled ? 0.6 : 1,
+                cursor: disabled ? 'not-allowed' : 'pointer'
+              }}
             >
               + Create "{query}" as new product
             </button>
@@ -156,6 +186,11 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
               <button 
                 className="create-new-link"
                 onClick={handleCreateNew}
+                disabled={disabled}
+                style={{
+                  opacity: disabled ? 0.6 : 1,
+                  cursor: disabled ? 'not-allowed' : 'pointer'
+                }}
               >
                 + Create "{query}" as new product
               </button>
@@ -167,7 +202,11 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
           <div 
             key={product.catalog_product_id}
             className={`search-result-item ${index === selectedIndex ? 'selected' : ''}`}
-            onClick={() => onProductSelected(product)}
+            onClick={disabled ? undefined : () => onProductSelected(product)}
+            style={{
+              opacity: disabled ? 0.6 : 1,
+              cursor: disabled ? 'not-allowed' : 'pointer'
+            }}
           >
             <div className="product-info">
               <div className="product-title">{product.title}</div>
