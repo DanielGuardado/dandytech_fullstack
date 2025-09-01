@@ -94,6 +94,7 @@ export interface Product {
   category_name: string;
   brand?: string;
   upc?: string;
+  pricecharting_id?: string;
   platform?: {
     platform_id: number;
     name: string;

@@ -377,6 +377,20 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
     }
   };
 
+  const handleLinkToPriceCharting = () => {
+    if (!selectedProduct) return;
+    
+    // Set up the state for PriceCharting linking
+    setCreatedProductId(selectedProduct.catalog_product_id);
+    setNewProductData({
+      title: selectedProduct.title,
+      category_id: selectedProduct.category_id,
+      brand: selectedProduct.brand,
+      upc: selectedProduct.upc,
+      game: selectedProduct.platform ? { platform_id: selectedProduct.platform.platform_id } : undefined
+    } as CreateProductRequest);
+    setCurrentStep('pc-link');
+  };
 
   const handleBack = () => {
     switch (currentStep) {
@@ -589,6 +603,9 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           showCreateVariant={true}
           defaultVariantMode={internalDefaultVariantMode}
           mode={mode}
+          onLinkToPriceCharting={handleLinkToPriceCharting}
+          isLinkedToPriceCharting={false}
+          isVideoGame={false}
         />
       )}
 
@@ -603,6 +620,9 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           showCreateVariant={false}
           defaultVariantMode={internalDefaultVariantMode}
           mode={mode}
+          onLinkToPriceCharting={handleLinkToPriceCharting}
+          isLinkedToPriceCharting={!!selectedProduct?.pricecharting_id}
+          isVideoGame={categories.find(c => c.category_id === selectedProduct?.category_id)?.name === 'Video Game'}
         />
       )}
 

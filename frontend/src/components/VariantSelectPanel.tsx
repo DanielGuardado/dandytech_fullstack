@@ -18,6 +18,9 @@ interface VariantSelectPanelProps {
   showCreateVariant: boolean;
   defaultVariantMode?: string;
   mode?: 'purchase_order' | 'calculator';
+  onLinkToPriceCharting?: () => void;
+  isLinkedToPriceCharting?: boolean;
+  isVideoGame?: boolean;
 }
 
 const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
@@ -29,7 +32,10 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
   loading,
   showCreateVariant,
   defaultVariantMode,
-  mode = 'purchase_order'
+  mode = 'purchase_order',
+  onLinkToPriceCharting,
+  isLinkedToPriceCharting = false,
+  isVideoGame = false
 }) => {
   // For creating new variants
   const [createMode, setCreateMode] = useState(showCreateVariant);
@@ -243,6 +249,32 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Link to PriceCharting */}
+          {availableVariants.length > 0 && isVideoGame && !isLinkedToPriceCharting && onLinkToPriceCharting && (
+            <div style={{ 
+              marginTop: '16px', 
+              paddingTop: '16px', 
+              borderTop: '1px solid #dee2e6' 
+            }}>
+              <button 
+                onClick={onLinkToPriceCharting}
+                style={{
+                  padding: '6px 12px',
+                  background: 'transparent',
+                  border: '1px solid #007bff',
+                  borderRadius: '3px',
+                  color: '#007bff',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  fontWeight: 'normal',
+                  width: '100%'
+                }}
+              >
+                🔗 Link to PriceCharting
+              </button>
             </div>
           )}
 
