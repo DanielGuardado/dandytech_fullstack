@@ -512,17 +512,26 @@ const PurchaseCalculator: React.FC = () => {
                           checked={sessionData?.cashback_enabled ?? true}
                           onChange={async (e) => {
                             const newValue = e.target.checked;
+                            console.log(`CASHBACK TOGGLE: ${sessionData?.cashback_enabled} -> ${newValue}`);
                             setSessionData(prev => prev ? { ...prev, cashback_enabled: newValue } : prev);
                             
                             if (sessionId) {
                               try {
+                                console.log(`CASHBACK: Updating session ${sessionId} with cashback_enabled=${newValue}`);
                                 await calculatorService.updateSession(sessionId, { cashback_enabled: newValue });
-                                // Trigger recalculation
+                                
+                                console.log(`CASHBACK: Triggering recalculation for session ${sessionId}`);
                                 await calculatorService.recalculateSession(sessionId);
+                                
+                                console.log(`CASHBACK: Fetching updated session data`);
                                 const updatedSession = await calculatorService.getSession(sessionId);
+                                console.log(`CASHBACK: Updated session cashback_enabled=${updatedSession.cashback_enabled}`);
+                                
                                 setSessionData(updatedSession);
                                 setItems(updatedSession.items);
+                                console.log(`CASHBACK: Items updated, count=${updatedSession.items?.length || 0}`);
                               } catch (err) {
+                                console.error('CASHBACK ERROR:', err);
                                 setError(`Failed to update cashback setting: ${err instanceof Error ? err.message : 'Unknown error'}`);
                                 // Revert on error
                                 setSessionData(prev => prev ? { ...prev, cashback_enabled: !newValue } : prev);
@@ -548,7 +557,7 @@ const PurchaseCalculator: React.FC = () => {
                       border: '1px solid #dee2e6'
                     }}>
                       <span style={{ fontSize: '12px', color: '#495057' }}>
-                        🏛️ Tax Exempt
+                        🏛️ Tax Exempt Purchase
                       </span>
                       <label style={{ 
                         display: 'inline-flex',

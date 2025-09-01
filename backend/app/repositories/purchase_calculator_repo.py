@@ -82,12 +82,33 @@ class PurchaseCalculatorRepo:
                 OUTPUT INSERTED.session_id, INSERTED.session_name, INSERTED.source_id,
                        INSERTED.total_items, INSERTED.total_market_value, INSERTED.total_estimated_revenue,
                        INSERTED.total_purchase_price, INSERTED.expected_profit, INSERTED.expected_profit_margin,
-                       INSERTED.status, INSERTED.purchase_order_id, INSERTED.asking_price, INSERTED.created_at, INSERTED.updated_at
+                       INSERTED.status, INSERTED.purchase_order_id, INSERTED.asking_price, 
+                       INSERTED.cashback_enabled, INSERTED.tax_exempt, INSERTED.created_at, INSERTED.updated_at
                 VALUES (:session_name, :source_id, :asking_price)
             """),
             {"session_name": session_name, "source_id": source_id, "asking_price": asking_price}
         ).mappings().first()
-        return dict(result)
+        
+        created_session = dict(result)
+        
+        # Apply boolean conversion to newly created session as well
+        if "cashback_enabled" in created_session:
+            raw_cashback = created_session["cashback_enabled"]
+            created_session["cashback_enabled"] = bool(raw_cashback) if raw_cashback is not None else True
+            print(f"DEBUG REPO CREATE_SESSION: Converted cashback_enabled {raw_cashback} -> {created_session['cashback_enabled']}")
+        else:
+            created_session["cashback_enabled"] = True
+            print("DEBUG REPO CREATE_SESSION: cashback_enabled missing, defaulting to True")
+            
+        if "tax_exempt" in created_session:
+            raw_tax_exempt = created_session["tax_exempt"]
+            created_session["tax_exempt"] = bool(raw_tax_exempt) if raw_tax_exempt is not None else True
+            print(f"DEBUG REPO CREATE_SESSION: Converted tax_exempt {raw_tax_exempt} -> {created_session['tax_exempt']}")
+        else:
+            created_session["tax_exempt"] = True
+            print("DEBUG REPO CREATE_SESSION: tax_exempt missing, defaulting to True")
+        
+        return created_session
 
     def get_session(self, session_id: int) -> Optional[Dict]:
         """Get session details"""
@@ -96,14 +117,44 @@ class PurchaseCalculatorRepo:
                 SELECT s.session_id, s.session_name, s.source_id, s.total_items,
                        s.total_market_value, s.total_estimated_revenue, s.total_purchase_price,
                        s.expected_profit, s.expected_profit_margin, s.status, s.purchase_order_id,
-                       s.asking_price, s.created_at, s.updated_at, src.name as source_name
+                       s.asking_price, s.cashback_enabled, s.tax_exempt, s.created_at, s.updated_at, 
+                       src.name as source_name
                 FROM dbo.PurchaseCalculatorSessions s
                 LEFT JOIN dbo.Sources src ON s.source_id = src.source_id
                 WHERE s.session_id = :session_id
             """),
             {"session_id": session_id}
         ).mappings().first()
-        return dict(row) if row else None
+        
+        if not row:
+            return None
+            
+        result = dict(row)
+        
+        # Convert BIT fields to proper Python booleans
+        # Database BIT fields can return as 0/1 integers or True/False depending on driver
+        print(f"DEBUG REPO GET_SESSION: Raw cashback_enabled from DB = {result.get('cashback_enabled')} (type: {type(result.get('cashback_enabled'))})")
+        print(f"DEBUG REPO GET_SESSION: Raw tax_exempt from DB = {result.get('tax_exempt')} (type: {type(result.get('tax_exempt'))})")
+        
+        # Handle cashback_enabled - explicitly check for field presence
+        if "cashback_enabled" in result:
+            raw_cashback = result["cashback_enabled"]
+            result["cashback_enabled"] = bool(raw_cashback) if raw_cashback is not None else True
+            print(f"DEBUG REPO GET_SESSION: Converted cashback_enabled {raw_cashback} -> {result['cashback_enabled']}")
+        else:
+            result["cashback_enabled"] = True  # Default to enabled
+            print("DEBUG REPO GET_SESSION: cashback_enabled field missing, defaulting to True")
+            
+        # Handle tax_exempt - explicitly check for field presence  
+        if "tax_exempt" in result:
+            raw_tax_exempt = result["tax_exempt"]
+            result["tax_exempt"] = bool(raw_tax_exempt) if raw_tax_exempt is not None else True
+            print(f"DEBUG REPO GET_SESSION: Converted tax_exempt {raw_tax_exempt} -> {result['tax_exempt']}")
+        else:
+            result["tax_exempt"] = True  # Default to exempt
+            print("DEBUG REPO GET_SESSION: tax_exempt field missing, defaulting to True")
+            
+        return result
 
     def list_sessions(self, limit: int = 25, offset: int = 0, status: Optional[str] = None) -> Dict:
         """List calculator sessions with pagination"""
@@ -122,12 +173,23 @@ class PurchaseCalculatorRepo:
         """
         total = self.db.execute(text(count_query), params).scalar()
 
+        # Fix any sessions missing toggle values
+        self.db.execute(
+            text("""
+                UPDATE dbo.PurchaseCalculatorSessions 
+                SET cashback_enabled = COALESCE(cashback_enabled, 1),
+                    tax_exempt = COALESCE(tax_exempt, 1)
+                WHERE cashback_enabled IS NULL OR tax_exempt IS NULL
+            """)
+        )
+        
         # Get paginated results
         data_query = f"""
             SELECT s.session_id, s.session_name, s.source_id, s.total_items,
                    s.total_market_value, s.total_estimated_revenue, s.total_purchase_price,
                    s.expected_profit, s.expected_profit_margin, s.status, s.purchase_order_id,
-                   s.asking_price, s.created_at, s.updated_at, src.name as source_name
+                   s.asking_price, s.cashback_enabled, s.tax_exempt, s.created_at, s.updated_at, 
+                   src.name as source_name
             FROM dbo.PurchaseCalculatorSessions s
             LEFT JOIN dbo.Sources src ON s.source_id = src.source_id
             {where_clause}
@@ -144,29 +206,36 @@ class PurchaseCalculatorRepo:
 
     def update_session(self, session_id: int, **updates) -> Optional[Dict]:
         """Update session details"""
+        print(f"DEBUG REPO UPDATE: session_id={session_id}, updates={updates}")
         set_clauses = []
         params = {"session_id": session_id}
         
         for key, value in updates.items():
-            if key in ["session_name", "source_id", "status", "asking_price"]:
+            if key in ["session_name", "source_id", "status", "asking_price", "cashback_enabled", "tax_exempt"]:
                 set_clauses.append(f"{key} = :{key}")
                 params[key] = value
+                print(f"DEBUG REPO: Adding {key} = {value}")
         
         if not set_clauses:
+            print("DEBUG REPO: No valid updates, returning current session")
             return self.get_session(session_id)
         
         set_clauses.append("updated_at = SYSDATETIME()")
         
-        self.db.execute(
-            text(f"""
-                UPDATE dbo.PurchaseCalculatorSessions
-                SET {', '.join(set_clauses)}
-                WHERE session_id = :session_id
-            """),
-            params
-        )
+        sql_query = f"""
+            UPDATE dbo.PurchaseCalculatorSessions
+            SET {', '.join(set_clauses)}
+            WHERE session_id = :session_id
+        """
+        print(f"DEBUG REPO SQL: {sql_query}")
+        print(f"DEBUG REPO PARAMS: {params}")
         
-        return self.get_session(session_id)
+        result = self.db.execute(text(sql_query), params)
+        print(f"DEBUG REPO: Updated {result.rowcount} rows")
+        
+        updated_session = self.get_session(session_id)
+        print(f"DEBUG REPO: Final cashback_enabled = {updated_session.get('cashback_enabled')}")
+        return updated_session
 
     def update_session_totals(self, session_id: int, totals: Dict) -> None:
         """Update calculated session totals"""
@@ -244,7 +313,9 @@ class PurchaseCalculatorRepo:
             # Deduction fields
             "deductions": item_data.get("deductions"),
             "deduction_reasons": item_data.get("deduction_reasons"),
-            "has_manual": item_data.get("has_manual")
+            "has_manual": item_data.get("has_manual"),
+            # Purchase tax
+            "purchase_sales_tax": item_data.get("purchase_sales_tax")
         }
         
         result = self.db.execute(
@@ -258,7 +329,7 @@ class PurchaseCalculatorRepo:
                     sales_tax, final_value, base_variable_fee, discounted_variable_fee,
                     transaction_fee, ad_fee, shipping_cost, supplies_cost,
                     regular_cashback, shipping_cashback, total_cashback,
-                    deductions, deduction_reasons, has_manual
+                    deductions, deduction_reasons, has_manual, purchase_sales_tax
                 )
                 OUTPUT INSERTED.item_id, INSERTED.session_id, INSERTED.catalog_product_id,
                        INSERTED.variant_id, INSERTED.product_title,
@@ -271,7 +342,8 @@ class PurchaseCalculatorRepo:
                        INSERTED.base_variable_fee, INSERTED.discounted_variable_fee,
                        INSERTED.transaction_fee, INSERTED.ad_fee, INSERTED.shipping_cost,
                        INSERTED.supplies_cost, INSERTED.regular_cashback, INSERTED.shipping_cashback,
-                       INSERTED.total_cashback, INSERTED.deductions, INSERTED.deduction_reasons, INSERTED.has_manual
+                       INSERTED.total_cashback, INSERTED.deductions, INSERTED.deduction_reasons, 
+                       INSERTED.has_manual, INSERTED.purchase_sales_tax
                 VALUES (
                     :session_id, :catalog_product_id, :variant_id, :product_title,
                     :variant_type_code, :pricecharting_id, :market_price, :override_price,
@@ -281,7 +353,7 @@ class PurchaseCalculatorRepo:
                     :sales_tax, :final_value, :base_variable_fee, :discounted_variable_fee,
                     :transaction_fee, :ad_fee, :shipping_cost, :supplies_cost,
                     :regular_cashback, :shipping_cashback, :total_cashback,
-                    :deductions, :deduction_reasons, :has_manual
+                    :deductions, :deduction_reasons, :has_manual, :purchase_sales_tax
                 )
             """),
             params
@@ -303,7 +375,8 @@ class PurchaseCalculatorRepo:
                        i.sales_tax, i.final_value, i.base_variable_fee, i.discounted_variable_fee,
                        i.transaction_fee, i.ad_fee, i.shipping_cost, i.supplies_cost,
                        i.regular_cashback, i.shipping_cashback, i.total_cashback,
-                       i.deductions, i.deduction_reasons, i.has_manual
+                       i.deductions, i.deduction_reasons, i.has_manual, 
+                       i.purchase_price_before_tax, i.purchase_sales_tax
                 FROM dbo.PurchaseCalculatorItems i
                 LEFT JOIN dbo.CatalogProductGames cpg ON cpg.catalog_product_id = i.catalog_product_id
                 LEFT JOIN dbo.Platforms p ON p.platform_id = cpg.platform_id
@@ -328,7 +401,9 @@ class PurchaseCalculatorRepo:
             "transaction_fee", "ad_fee", "shipping_cost", "supplies_cost",
             "regular_cashback", "shipping_cashback", "total_cashback",
             # Deduction fields
-            "deductions", "deduction_reasons", "has_manual"
+            "deductions", "deduction_reasons", "has_manual",
+            # Purchase tax fields
+            "purchase_price_before_tax", "purchase_sales_tax"
         ]
         
         for key, value in updates.items():
@@ -365,7 +440,8 @@ class PurchaseCalculatorRepo:
                        i.sales_tax, i.final_value, i.base_variable_fee, i.discounted_variable_fee,
                        i.transaction_fee, i.ad_fee, i.shipping_cost, i.supplies_cost,
                        i.regular_cashback, i.shipping_cashback, i.total_cashback,
-                       i.deductions, i.deduction_reasons, i.has_manual
+                       i.deductions, i.deduction_reasons, i.has_manual, 
+                       i.purchase_price_before_tax, i.purchase_sales_tax
                 FROM dbo.PurchaseCalculatorItems i
                 LEFT JOIN dbo.CatalogProductGames cpg ON cpg.catalog_product_id = i.catalog_product_id
                 LEFT JOIN dbo.Platforms p ON p.platform_id = cpg.platform_id

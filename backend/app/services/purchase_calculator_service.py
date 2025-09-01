@@ -85,9 +85,13 @@ class PurchaseCalculatorService:
 
     def update_session(self, session_id: int, **updates) -> Dict:
         """Update session"""
+        print(f"DEBUG SERVICE UPDATE_SESSION: session_id={session_id}, updates={updates}")
+        
         session = self.repo.get_session(session_id)
         if not session:
             raise AppError("Session not found", 404)
+        
+        print(f"DEBUG SERVICE UPDATE_SESSION: Current session cashback_enabled={session.get('cashback_enabled')}")
         
         if "source_id" in updates and updates["source_id"] and not self._validate_source_exists(updates["source_id"]):
             raise AppError("Invalid source_id", 400)
@@ -95,8 +99,16 @@ class PurchaseCalculatorService:
         if "status" in updates and updates["status"] not in ["draft", "finalized", "converted_to_po"]:
             raise AppError("Invalid status", 400)
         
+        # Add specific logging for toggle updates
+        if "cashback_enabled" in updates:
+            print(f"DEBUG SERVICE UPDATE_SESSION: Updating cashback_enabled from {session.get('cashback_enabled')} to {updates['cashback_enabled']}")
+        if "tax_exempt" in updates:
+            print(f"DEBUG SERVICE UPDATE_SESSION: Updating tax_exempt from {session.get('tax_exempt')} to {updates['tax_exempt']}")
+        
         updated_session = self.repo.update_session(session_id, **updates)
         self.db.commit()
+        
+        print(f"DEBUG SERVICE UPDATE_SESSION: After update, cashback_enabled={updated_session.get('cashback_enabled')}")
         return updated_session
 
     def delete_session(self, session_id: int) -> bool:
@@ -201,21 +213,30 @@ class PurchaseCalculatorService:
 
     def recalculate_session(self, session_id: int) -> Dict:
         """Recalculate all items in a session"""
+        # Get the LATEST session data to ensure we have updated toggle values with proper boolean conversion
         session = self.repo.get_session(session_id)
         if not session:
             raise AppError("Session not found", 404)
         
-        items = self.repo.get_session_items(session_id)
+        print(f"DEBUG RECALC: session keys: {list(session.keys())}")
+        print(f"DEBUG RECALC: cashback_enabled={session.get('cashback_enabled')} (type: {type(session.get('cashback_enabled'))})")
+        print(f"DEBUG RECALC: tax_exempt={session.get('tax_exempt')} (type: {type(session.get('tax_exempt'))})")
         
-        # Recalculate each item
+        items = self.repo.get_session_items(session_id)
+        print(f"DEBUG RECALC: Found {len(items)} items to recalculate")
+        
+        # Recalculate each item using the current session data
         for item in items:
+            print(f"DEBUG RECALC ITEM: Recalculating item {item['item_id']} with cashback_enabled={session.get('cashback_enabled')}")
             calculated_item = self._calculate_item_pricing(item, session)
+            print(f"DEBUG RECALC ITEM: Item {item['item_id']} - New total_cashback={calculated_item.get('total_cashback', 'None')}")
             self.repo.update_item(item["item_id"], calculated_item)
         
         # Update session totals
         self._recalculate_session_totals(session_id)
         
         self.db.commit()
+        print(f"DEBUG RECALC: Recalculation complete for session {session_id}")
         return self.get_session(session_id)
 
     # -------- Conversion to Purchase Order --------
@@ -389,6 +410,41 @@ class PurchaseCalculatorService:
         """Calculate all pricing fields for an item using eBay fee structure"""
         config = self.get_config()
         
+        print(f"DEBUG CALC SERVICE: session_data keys: {list(session_data.keys()) if session_data else 'None'}")
+        
+        # Ensure session_data has required toggle fields with defaults
+        if session_data is None:
+            session_data = {}
+        if "cashback_enabled" not in session_data:
+            print("DEBUG CALC SERVICE: cashback_enabled missing, adding default True")
+            session_data["cashback_enabled"] = True
+        else:
+            print(f"DEBUG CALC SERVICE: cashback_enabled found: {session_data['cashback_enabled']}")
+        if "tax_exempt" not in session_data:
+            print("DEBUG CALC SERVICE: tax_exempt missing, adding default True")
+            session_data["tax_exempt"] = True
+        else:
+            print(f"DEBUG CALC SERVICE: tax_exempt found: {session_data['tax_exempt']}")
+        
+        # Convert all Decimal values to float for calculation compatibility
+        # This is necessary when recalculating items from database
+        numeric_fields = [
+            "market_price", "override_price", "markup_amount", "deductions", 
+            "shipping_cost", "target_profit_percentage", "quantity",
+            "final_base_price", "estimated_sale_price", "sales_tax", "final_value",
+            "base_variable_fee", "discounted_variable_fee", "transaction_fee", 
+            "ad_fee", "supplies_cost", "regular_cashback", "shipping_cashback", 
+            "total_cashback", "total_fees", "net_after_fees", "purchase_price_before_tax",
+            "calculated_purchase_price", "purchase_sales_tax"
+        ]
+        for field in numeric_fields:
+            if field in item_data and item_data[field] is not None:
+                try:
+                    item_data[field] = float(item_data[field])
+                except (TypeError, ValueError):
+                    # Skip if can't convert (might be None or string)
+                    pass
+        
         # Determine base price and source
         if item_data.get("override_price") is not None:
             base_price = float(item_data["override_price"])
@@ -428,15 +484,12 @@ class PurchaseCalculatorService:
         estimated_sale_price = final_base_price + markup_amount - deductions
         
         # Step 1: Calculate sales tax and final value (what buyer pays)
-        # Check session tax_exempt setting (default True = exempt from tax)
-        if session_data and not session_data.get("tax_exempt", True):
-            # Tax is applied (tax_exempt = False)
-            sales_tax_rate = float(config["sales_tax_avg"]["config_value"]) / 100
-            sales_tax = estimated_sale_price * sales_tax_rate
-        else:
-            # Tax exempt (tax_exempt = True or not specified)
-            sales_tax = 0.0
+        # Sales tax is always calculated based on average eBay buyer tax rate
+        sales_tax_rate = float(config["sales_tax_avg"]["config_value"]) / 100
+        sales_tax = estimated_sale_price * sales_tax_rate
         final_value = estimated_sale_price + sales_tax
+        
+        print(f"DEBUG TAX BUYER: Always applying buyer sales tax - rate: {sales_tax_rate}, tax: ${sales_tax:.2f}")
         
         # Determine if this is a game or console based on category or variant type
         is_console = self._is_console_item(item_data)
@@ -473,16 +526,31 @@ class PurchaseCalculatorService:
         
         # Step 6: Calculate cashback (money back to us)
         # Check session cashback_enabled setting (default True = enabled)
-        if session_data and not session_data.get("cashback_enabled", True):
-            # Cashback disabled
+        print(f"DEBUG CASHBACK: session_data = {session_data}")
+        
+        # More explicit cashback logic - handle different data types
+        if session_data and "cashback_enabled" in session_data:
+            cashback_enabled = bool(session_data["cashback_enabled"])
+            print(f"DEBUG CASHBACK: Found cashback_enabled in session_data = {session_data['cashback_enabled']} -> {cashback_enabled}")
+        else:
+            cashback_enabled = True  # Default to enabled
+            print("DEBUG CASHBACK: No cashback_enabled in session_data, defaulting to True")
+        
+        print(f"DEBUG CASHBACK: Final cashback_enabled = {cashback_enabled}")
+        
+        # Always calculate shipping cashback (not affected by toggle)
+        shipping_cashback_rate = float(config["shipping_cashback_rate"]["config_value"]) / 100
+        shipping_cashback = shipping_cost * shipping_cashback_rate
+        
+        if not cashback_enabled:
+            # Cashback disabled - only affects regular cashback
             regular_cashback = 0.0
-            shipping_cashback = 0.0
+            print("DEBUG CASHBACK: Disabled - setting regular_cashback to $0.00, keeping shipping_cashback")
         else:
             # Cashback enabled
+            print("DEBUG CASHBACK: Enabled - calculating regular_cashback")
             regular_cashback_rate = float(config["regular_cashback_rate"]["config_value"]) / 100
-            shipping_cashback_rate = float(config["shipping_cashback_rate"]["config_value"]) / 100
             regular_cashback = estimated_sale_price * regular_cashback_rate
-            shipping_cashback = shipping_cost * shipping_cashback_rate
         total_cashback = regular_cashback + shipping_cashback
         
         # Step 7: Net after fees (we collect tax but remit it, so it nets out)
@@ -494,9 +562,35 @@ class PurchaseCalculatorService:
         print(f"DEBUG CALC - Ad: ${ad_fee:.2f}, Ship: ${shipping_cost:.2f}, Supplies: ${supplies_cost:.2f}")
         print(f"DEBUG CALC - Total Fees: ${total_fees:.2f}, Cashback: ${total_cashback:.2f}, Net: ${net_after_fees:.2f}")
         
-        # Step 8: Calculate purchase price based on target profit margin
+        # Step 8: Calculate total budget based on target profit margin
         target_profit_percentage = item_data.get("target_profit_percentage", 25.0) / 100
-        calculated_purchase_price = net_after_fees * (1 - target_profit_percentage)
+        total_purchase_budget = net_after_fees * (1 - target_profit_percentage)
+        
+        # Step 9: Calculate purchase price and tax to maintain target margin
+        # Check session tax_exempt setting (default True = exempt from local sales tax)
+        print(f"DEBUG PURCHASE TAX: session_data = {session_data}")
+        tax_exempt = session_data.get("tax_exempt", True) if session_data else True
+        print(f"DEBUG PURCHASE TAX: tax_exempt = {tax_exempt}")
+        print(f"DEBUG PURCHASE TAX: Total budget for {target_profit_percentage*100}% margin: ${total_purchase_budget:.2f}")
+        
+        if session_data and not tax_exempt:
+            # When paying tax, divide budget between seller payment and tax
+            # Formula: seller_offer * (1 + tax_rate) = total_budget
+            local_sales_tax_rate = float(config["local_sales_tax"]["config_value"]) / 100
+            calculated_purchase_price = total_purchase_budget / (1 + local_sales_tax_rate)
+            purchase_sales_tax = calculated_purchase_price * local_sales_tax_rate
+            purchase_price_before_tax = total_purchase_budget  # The budget we had before factoring in tax
+            print(f"DEBUG PURCHASE TAX: Applied - rate: {local_sales_tax_rate}, offer: ${calculated_purchase_price:.2f}, tax: ${purchase_sales_tax:.2f}")
+        else:
+            # Tax exempt purchase - entire budget goes to seller
+            calculated_purchase_price = total_purchase_budget
+            purchase_sales_tax = 0.0
+            purchase_price_before_tax = total_purchase_budget
+            print("DEBUG PURCHASE TAX: Exempt - entire budget goes to seller")
+        
+        # Verify total cost equals budget (for debugging)
+        total_cost = calculated_purchase_price + purchase_sales_tax
+        print(f"DEBUG PURCHASE CALC: Budget: ${total_purchase_budget:.2f}, Offer: ${calculated_purchase_price:.2f}, Tax: ${purchase_sales_tax:.2f}, Total Cost: ${total_cost:.2f}")
         
         # Handle deduction_reasons serialization
         deduction_reasons = item_data.get("deduction_reasons")
@@ -523,7 +617,9 @@ class PurchaseCalculatorService:
             "total_cashback": total_cashback,
             "total_fees": total_fees,
             "net_after_fees": net_after_fees,
-            "calculated_purchase_price": max(0, calculated_purchase_price)  # Don't go negative
+            "purchase_price_before_tax": purchase_price_before_tax,
+            "calculated_purchase_price": calculated_purchase_price,  # Final offer amount (after tax reduction)
+            "purchase_sales_tax": purchase_sales_tax
         }
 
     def _is_console_item(self, item_data: Dict) -> bool:
@@ -552,6 +648,8 @@ class PurchaseCalculatorService:
         total_market_value = 0
         total_estimated_revenue = 0
         total_purchase_price = 0
+        total_purchase_sales_tax = 0
+        total_purchase_cost = 0
         total_fees = 0
         
         for item in items:
@@ -566,10 +664,20 @@ class PurchaseCalculatorService:
             if item["calculated_purchase_price"]:
                 total_purchase_price += item["calculated_purchase_price"] * quantity
                 
+            if item["purchase_sales_tax"]:
+                total_purchase_sales_tax += item["purchase_sales_tax"] * quantity
+                
+            # Total purchase cost is calculated_purchase_price + purchase_sales_tax
+            # Since calculated_purchase_price is now the final offer (after deducting tax)
+            # we need to add the tax back to get the total you actually pay
+            purchase_cost_with_tax = item.get("calculated_purchase_price", 0) + item.get("purchase_sales_tax", 0)
+            total_purchase_cost += purchase_cost_with_tax * quantity
+                
             if item["total_fees"]:
                 total_fees += item["total_fees"] * quantity
         
-        expected_profit = total_estimated_revenue - total_fees - total_purchase_price
+        # Use total purchase cost (including tax) for accurate profit calculation
+        expected_profit = total_estimated_revenue - total_fees - total_purchase_cost
         expected_profit_margin = (expected_profit / total_estimated_revenue * 100) if total_estimated_revenue > 0 else 0
         
         totals = {

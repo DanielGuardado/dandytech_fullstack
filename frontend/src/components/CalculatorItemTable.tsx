@@ -207,9 +207,21 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
                 </span>
               ) : '-'}
             </td>
-            {/* 6. Purchase $ - red color */}
+            {/* 6. Purchase $ - show final offer with tax breakdown */}
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#dc3545' }}>
-              {item.calculated_purchase_price ? calculatorService.formatCurrency(item.calculated_purchase_price) : '-'}
+              {item.calculated_purchase_price ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <span style={{ fontSize: '13px' }}>
+                    {calculatorService.formatCurrency(item.calculated_purchase_price)}
+                  </span>
+                  {item.purchase_sales_tax && item.purchase_sales_tax > 0 && item.purchase_price_before_tax && (
+                    <span style={{ fontSize: '10px', color: '#6c757d', fontWeight: 'normal' }} 
+                          title={`Pre-tax max: ${calculatorService.formatCurrency(item.purchase_price_before_tax)} - Tax: ${calculatorService.formatCurrency(item.purchase_sales_tax)} = Offer: ${calculatorService.formatCurrency(item.calculated_purchase_price)}`}>
+                      (w/ tax impact)
+                    </span>
+                  )}
+                </div>
+              ) : '-'}
             </td>
             {/* 7. Markup */}
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace' }}>
@@ -264,55 +276,47 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
                 </CalculatorTooltip>
               ) : '-'}
             </td>
-            {/* 11. Earnings - conditional color */}
+            {/* 11. Earnings - conditional color, using total purchase cost (offer + tax) */}
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-              {item.net_after_fees && item.calculated_purchase_price ? (
-                <span style={{ 
-                  color: (item.net_after_fees - item.calculated_purchase_price) >= 0 ? '#28a745' : '#dc3545'
-                }}>
-                  {calculatorService.formatCurrency(item.net_after_fees - item.calculated_purchase_price)}
-                </span>
-              ) : '-'}
+              {item.net_after_fees && item.calculated_purchase_price ? (() => {
+                const totalPurchaseCost = item.calculated_purchase_price + (item.purchase_sales_tax || 0);
+                const earnings = item.net_after_fees - totalPurchaseCost;
+                return (
+                  <span style={{ 
+                    color: earnings >= 0 ? '#28a745' : '#dc3545'
+                  }}>
+                    {calculatorService.formatCurrency(earnings)}
+                  </span>
+                );
+              })() : '-'}
             </td>
-            {/* 12. Margin % - with new color coding */}
+            {/* 12. Margin % - with new color coding, using total purchase cost (offer + tax) */}
             <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-              {item.net_after_fees && item.calculated_purchase_price ? (
-                <span style={{ 
-                  color: calculatorService.getProfitMarginColor(
-                    calculatorService.calculateProfitMarginFromNet(
-                      item.net_after_fees, 
-                      item.calculated_purchase_price
-                    )
-                  )
-                }}>
-                  {calculatorService.formatPercentage(
-                    calculatorService.calculateProfitMarginFromNet(
-                      item.net_after_fees, 
-                      item.calculated_purchase_price
-                    )
-                  )}
-                </span>
-              ) : '-'}
+              {item.net_after_fees && item.calculated_purchase_price ? (() => {
+                const totalPurchaseCost = item.calculated_purchase_price + (item.purchase_sales_tax || 0);
+                const margin = calculatorService.calculateProfitMarginFromNet(item.net_after_fees, totalPurchaseCost);
+                return (
+                  <span style={{ 
+                    color: calculatorService.getProfitMarginColor(margin)
+                  }}>
+                    {calculatorService.formatPercentage(margin)}
+                  </span>
+                );
+              })() : '-'}
             </td>
-            {/* 13. ROI % - with new color coding */}
+            {/* 13. ROI % - with new color coding, using total purchase cost (offer + tax) */}
             <td style={{ padding: '6px 8px', textAlign: 'center', fontSize: '12px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-              {item.net_after_fees && item.calculated_purchase_price ? (
-                <span style={{ 
-                  color: calculatorService.getROIColor(
-                    calculatorService.calculateROIFromNet(
-                      item.net_after_fees, 
-                      item.calculated_purchase_price
-                    )
-                  )
-                }}>
-                  {calculatorService.formatPercentage(
-                    calculatorService.calculateROIFromNet(
-                      item.net_after_fees, 
-                      item.calculated_purchase_price
-                    )
-                  )}
-                </span>
-              ) : '-'}
+              {item.net_after_fees && item.calculated_purchase_price ? (() => {
+                const totalPurchaseCost = item.calculated_purchase_price + (item.purchase_sales_tax || 0);
+                const roi = calculatorService.calculateROIFromNet(item.net_after_fees, totalPurchaseCost);
+                return (
+                  <span style={{ 
+                    color: calculatorService.getROIColor(roi)
+                  }}>
+                    {calculatorService.formatPercentage(roi)}
+                  </span>
+                );
+              })() : '-'}
             </td>
             {/* 14. Actions */}
             {canEdit && (

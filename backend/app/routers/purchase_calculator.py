@@ -80,7 +80,8 @@ def update_session(
     """Update session details"""
     service = PurchaseCalculatorService(db)
     updates = payload.dict(exclude_unset=True)
-    return service.update_session(session_id, **updates)
+    result = service.update_session(session_id, **updates)
+    return result
 
 @router.delete("/calculator/sessions/{session_id}", status_code=204)
 def delete_session(session_id: int = Path(..., ge=1), db: Session = Depends(get_db)):
@@ -129,7 +130,8 @@ def delete_item(
 def recalculate_session(session_id: int = Path(..., ge=1), db: Session = Depends(get_db)):
     """Recalculate all items in session"""
     service = PurchaseCalculatorService(db)
-    return service.recalculate_session(session_id)
+    result = service.recalculate_session(session_id)
+    return result
 
 # -------- Purchase Order Conversion --------
 

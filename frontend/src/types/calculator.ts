@@ -100,6 +100,8 @@ export interface CalculatorItem {
   regular_cashback?: number;
   shipping_cashback?: number;
   total_cashback?: number;
+  purchase_price_before_tax?: number;
+  purchase_sales_tax?: number;
   
   quantity: number;
   notes?: string;

@@ -86,7 +86,13 @@ class CalculatorService {
   }
 
   async getSession(sessionId: number): Promise<CalculatorSessionDetail> {
-    return this.request<CalculatorSessionDetail>(`/calculator/sessions/${sessionId}`);
+    const result = await this.request<CalculatorSessionDetail>(`/calculator/sessions/${sessionId}`);
+    console.log(`API GET_SESSION response for session ${sessionId}:`, {
+      cashback_enabled: result.cashback_enabled,
+      tax_exempt: result.tax_exempt,
+      session_id: result.session_id
+    });
+    return result;
   }
 
   async updateSession(sessionId: number, updates: CalculatorSessionUpdate): Promise<CalculatorSession> {

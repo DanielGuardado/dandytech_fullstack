@@ -127,6 +127,8 @@ class CalculatorItem(BaseModel):
     regular_cashback: Optional[float] = None
     shipping_cashback: Optional[float] = None
     total_cashback: Optional[float] = None
+    purchase_price_before_tax: Optional[float] = None
+    purchase_sales_tax: Optional[float] = None
     
     # Additional fields for UI display
     platform_name: Optional[str] = None
