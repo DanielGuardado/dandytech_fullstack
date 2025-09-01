@@ -23,3 +23,4 @@ app.include_router(purchase_calculator.router, prefix="/api/v1", tags=["purchase
 def health():
     return {"ok": True}
 
+

@@ -225,6 +225,7 @@ const PurchaseCalculator: React.FC = () => {
         total_market_value: 0,
         total_estimated_revenue: 0,
         total_purchase_price: 0,
+        total_purchase_cost: 0,
         expected_profit: 0,
         expected_profit_margin: 0,
         average_percent_of_market: 0,
@@ -806,8 +807,8 @@ const PurchaseCalculator: React.FC = () => {
                     </div>
 
                     {/* Asking Price Comparison */}
-                    {dynamicSessionData.asking_price && dynamicSessionData.total_purchase_price && (() => {
-                      const dealQuality = calculatorService.getDealQualityRating(dynamicSessionData.asking_price, dynamicSessionData.total_purchase_price);
+                    {dynamicSessionData.asking_price && calculatedTotals.total_purchase_cost && (() => {
+                      const dealQuality = calculatorService.getDealQualityRating(dynamicSessionData.asking_price, calculatedTotals.total_purchase_cost);
                       const profitAtAsking = calculatorService.calculateProfitAtAskingPrice(dynamicSessionData.total_estimated_revenue || 0, dynamicSessionData.asking_price);
                       const marginAtAsking = calculatorService.calculateMarginAtAskingPrice(dynamicSessionData.total_estimated_revenue || 0, dynamicSessionData.asking_price);
                       const roiAtAsking = calculatorService.calculateROIAtAskingPrice(dynamicSessionData.total_estimated_revenue || 0, dynamicSessionData.asking_price);
@@ -836,16 +837,16 @@ const PurchaseCalculator: React.FC = () => {
                                 fontFamily: 'monospace',
                                 color: dealQuality.color
                               }}>
-                                {calculatorService.formatCurrency(dynamicSessionData.asking_price)} vs {calculatorService.formatCurrency(dynamicSessionData.total_purchase_price)}
+                                {calculatorService.formatCurrency(dynamicSessionData.asking_price)} vs {calculatorService.formatCurrency(calculatedTotals.total_purchase_cost)}
                               </span>
                               <span style={{ 
                                 fontSize: '10px', 
                                 fontWeight: 'bold',
                                 color: dealQuality.color
                               }}>
-                                {dynamicSessionData.asking_price <= dynamicSessionData.total_purchase_price ? 
-                                  `✅ GOOD DEAL (Save $${calculatorService.formatCurrency(dynamicSessionData.total_purchase_price - dynamicSessionData.asking_price).replace('$', '')}) | ${dealQuality.percentage.toFixed(0)}% of max` : 
-                                  `❌ OVERPRICED ($${calculatorService.formatCurrency(dynamicSessionData.asking_price - dynamicSessionData.total_purchase_price).replace('$', '')} over) | ${dealQuality.percentage.toFixed(0)}% of max`
+                                {dynamicSessionData.asking_price <= calculatedTotals.total_purchase_cost ? 
+                                  `✅ GOOD DEAL (Save $${calculatorService.formatCurrency(calculatedTotals.total_purchase_cost - dynamicSessionData.asking_price).replace('$', '')}) | ${dealQuality.percentage.toFixed(0)}% of max` : 
+                                  `❌ OVERPRICED ($${calculatorService.formatCurrency(dynamicSessionData.asking_price - calculatedTotals.total_purchase_cost).replace('$', '')} over) | ${dealQuality.percentage.toFixed(0)}% of max`
                                 }
                               </span>
                             </div>

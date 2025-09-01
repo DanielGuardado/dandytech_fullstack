@@ -380,8 +380,11 @@ class CalculatorService {
     
     const percentages = validItems.map(item => {
       const marketPrice = item.market_price || 0;
+      // Include sales tax in total purchase cost for consistency
       const purchasePrice = item.calculated_purchase_price || 0;
-      return (purchasePrice / marketPrice) * 100;
+      const salesTax = item.purchase_sales_tax || 0;
+      const totalCost = purchasePrice + salesTax;
+      return (totalCost / marketPrice) * 100;
     });
     
     const totalPercent = percentages.reduce((sum, percent) => sum + percent, 0);
@@ -398,9 +401,13 @@ class CalculatorService {
     
     if (validItems.length === 0) return 0;
     
-    const rois = validItems.map(item => 
-      this.calculateROIFromNet(item.net_after_fees || 0, item.calculated_purchase_price || 0)
-    );
+    const rois = validItems.map(item => {
+      // Include sales tax in total purchase cost for consistency
+      const purchasePrice = item.calculated_purchase_price || 0;
+      const salesTax = item.purchase_sales_tax || 0;
+      const totalCost = purchasePrice + salesTax;
+      return this.calculateROIFromNet(item.net_after_fees || 0, totalCost);
+    });
     
     const totalROI = rois.reduce((sum, roi) => sum + roi, 0);
     return totalROI / rois.length;
@@ -414,6 +421,7 @@ class CalculatorService {
     total_market_value: number;
     total_estimated_revenue: number;
     total_purchase_price: number;
+    total_purchase_cost: number;
     expected_profit: number;
     expected_profit_margin: number;
     average_percent_of_market: number;
@@ -426,10 +434,21 @@ class CalculatorService {
     const total_estimated_revenue = items.reduce((sum, item) => 
       sum + ((item.net_after_fees || 0) * (item.quantity || 1)), 0
     );
+    
+    // Separate offer amount (without tax) from total cost (with tax)
     const total_purchase_price = items.reduce((sum, item) => 
       sum + ((item.calculated_purchase_price || 0) * (item.quantity || 1)), 0
     );
-    const expected_profit = total_estimated_revenue - total_purchase_price;
+    
+    const total_purchase_cost = items.reduce((sum, item) => {
+      const purchasePrice = item.calculated_purchase_price || 0;
+      const salesTax = item.purchase_sales_tax || 0;
+      const totalCost = purchasePrice + salesTax;
+      return sum + (totalCost * (item.quantity || 1));
+    }, 0);
+    
+    // Use total cost (with tax) for profit calculations
+    const expected_profit = total_estimated_revenue - total_purchase_cost;
     const expected_profit_margin = total_estimated_revenue > 0 
       ? (expected_profit / total_estimated_revenue) * 100 
       : 0;
@@ -442,6 +461,7 @@ class CalculatorService {
       total_market_value,
       total_estimated_revenue,
       total_purchase_price,
+      total_purchase_cost,
       expected_profit,
       expected_profit_margin,
       average_percent_of_market,

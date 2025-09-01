@@ -1,24 +1,23 @@
  [] come up with a plan to tansfer abbreviations into to database for things like gta right now they're hardcoded
 
-[] while the product search is searching for games i should not be allowed to press enter 
-
-[] in search ignore thingss like . ' , since i dont want to be limited to typing out f.e.a.r to look up fear the game or having to type out luigi's mansion every time
-
 
 [] if i click on a pricecharitng list item and its already linked to another item find that item and swap it in
 
-
-UI Changes
-[] Consolidate markup and deductions into 1 column - column something like 'adjustments' then we should have a tooltip when we hover over that'll show the breakdown of markups/deductions
+[] when scrolling down with the keyboard on a long pricecharting list we lose the cursor it should stay focused with it 
 
 Frontend/Backend integrations
 [] Edit on line items
 - we should have the ability to click the edit field and make the Variant, qty, market, markup/deductions, all the fields that are auto calculated can be left the same. The part here that will require the most thought will be switching variants but lets map out how that would affect things.
 
+[] cool feature to add in the future would be to pull up ebay listing comps too.
 
-[] Where is the session name coming from right now? we should be able to set the session name 
 
 
+
+UI Changes
+[X] Consolidate markup and deductions into 1 column - column something like 'adjustments' then we should have a tooltip when we hover over that'll show the breakdown of markups/deductions
+
+[X] source_id on the session is not filling in properly i dont even think we have the option to assign that at the moment and for some reason when it's null the session names itself ebay - the date - we have access to the lookups that has all the sources it could be just make it a dropdown
 
 [X] weird issue when i type in mario kart wii it uses the console shipping price??
 
@@ -90,3 +89,11 @@ Session Changes
 
 [X] The ability to toggle tax exempt
 - this is very similar to cashback in the sense that we may not be tax exempt for some purchases the default should be tax exempt on to begin with and really its going to be the same logic and flow as The ability to toggle 'cashback purchase'
+
+[X] Where is the session name coming from right now? we should be able to set the session name 
+[X] now moving onto the add calculator item screen, if create a product and then go to the link to pricecharting screen and arrow key down as soon as it load. after a few moments itll reset me back to the top why is this happening?
+
+
+[X] while the product search is searching for games i should not be allowed to press enter 
+
+[X] in search ignore thingss like . ' , since i dont want to be limited to typing out f.e.a.r to look up fear the game or having to type out luigi's mansion every time

@@ -26,6 +26,16 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
   const [isLinking, setIsLinking] = useState(false);
   const resultListRef = useRef<HTMLDivElement>(null);
 
+  // Use refs to store callbacks to avoid effect re-runs
+  const onLinkRef = useRef(onLink);
+  const onSkipRef = useRef(onSkip);
+  
+  // Update refs when callbacks change
+  useEffect(() => {
+    onLinkRef.current = onLink;
+    onSkipRef.current = onSkip;
+  }, [onLink, onSkip]);
+
   useEffect(() => {
     // Auto-search on mount if we have UPC or title
     if ((upc || productTitle) && !hasSearched) {
@@ -33,9 +43,18 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
     }
   }, [upc, productTitle, hasSearched]);
 
-  // Reset selected index when results change
+  // Store previous results to detect actual changes
+  const prevResultsRef = useRef<PriceChartingResult[]>([]);
+  
+  // Only reset selected index when results actually change (not just reference)
   useEffect(() => {
-    setSelectedIndex(0);
+    const resultsChanged = results.length !== prevResultsRef.current.length ||
+      results.some((result, index) => result.id !== prevResultsRef.current[index]?.id);
+    
+    if (resultsChanged) {
+      setSelectedIndex(0);
+      prevResultsRef.current = results;
+    }
   }, [results]);
 
   // Handle link with local loading protection
@@ -44,7 +63,7 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
     
     setIsLinking(true);
     try {
-      await onLink(priceChartingId, result);
+      await onLinkRef.current(priceChartingId, result);
     } finally {
       // Reset local state after a delay to ensure parent state has updated
       setTimeout(() => setIsLinking(false), 100);
@@ -67,13 +86,16 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
           break;
         case 'Enter':
           e.preventDefault();
-          if (results[selectedIndex]) {
-            handleLink(results[selectedIndex].id, results[selectedIndex]);
-          }
+          setSelectedIndex(currentIndex => {
+            if (results[currentIndex]) {
+              handleLink(results[currentIndex].id, results[currentIndex]);
+            }
+            return currentIndex;
+          });
           break;
         case 'Escape':
           e.preventDefault();
-          onSkip();
+          onSkipRef.current();
           break;
       }
     };
@@ -81,11 +103,12 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
     // Add event listener to the document
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [hasSearched, results, selectedIndex, loading, isLinking]);
+  }, [hasSearched, results.length, loading, isLinking]);
 
   const handleSearch = () => {
     onSearch(searchQuery, upc);
     setHasSearched(true);
+    setSelectedIndex(0); // Reset selection when starting a new search
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

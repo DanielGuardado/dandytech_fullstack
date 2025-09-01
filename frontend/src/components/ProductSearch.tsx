@@ -77,6 +77,14 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (disabled) return; // Block all key actions when disabled
     
+    // Handle 'Shift+Enter' key for creating new product regardless of search results
+    if (e.key === 'Enter' && e.shiftKey && query.trim() && !loading) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleCreateNew();
+      return;
+    }
+    
     if (results.length > 0) {
       switch (e.key) {
         case 'ArrowDown':
@@ -122,8 +130,8 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
           type="text"
           placeholder={
             platformMode 
-              ? `Search ${platformMode.short_name || platformMode.name} games or press Enter to create new...`
-              : "Search products or press Enter to create new..."
+              ? `Search ${platformMode.short_name || platformMode.name} games or press Shift+Enter to create new...`
+              : "Search products or press Shift+Enter to create new..."
           }
           value={query}
           onChange={handleInputChange}
@@ -163,7 +171,7 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
               No products found for "{query}"
             </div>
             <div className="no-results-hint">
-              Press Enter or click below to create new product
+              Press Enter or Shift+Enter to create new product, or click below
             </div>
             <button 
               className="create-new-button"
@@ -192,7 +200,7 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
                   cursor: disabled ? 'not-allowed' : 'pointer'
                 }}
               >
-                + Create "{query}" as new product
+                + Create "{query}" as new product (or press Shift+Enter)
               </button>
             )}
           </div>

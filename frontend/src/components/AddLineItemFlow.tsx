@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { 
   Category, 
   Platform, 
@@ -107,14 +107,24 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   const isProcessing = loading || transitioning;
   const COOLDOWN_DELAY = 300; // ms
 
+  // Use refs to avoid callback recreation
+  const lastActionTimeRef = useRef(0);
+  const isProcessingRef = useRef(false);
+  
+  // Update refs when values change
+  React.useEffect(() => {
+    isProcessingRef.current = isProcessing;
+  }, [isProcessing]);
+
   const withTransition = useCallback((action: () => void | Promise<void>) => {
     const now = Date.now();
-    if (now - lastActionTime < COOLDOWN_DELAY || isProcessing) {
+    if (now - lastActionTimeRef.current < COOLDOWN_DELAY || isProcessingRef.current) {
       return; // Block if in cooldown or processing
     }
 
     setTransitioning(true);
     setLastActionTime(now);
+    lastActionTimeRef.current = now;
     
     const result = action();
     
@@ -125,7 +135,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
     } else {
       setTimeout(() => setTransitioning(false), COOLDOWN_DELAY);
     }
-  }, [lastActionTime, isProcessing]);
+  }, []);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [newProductData, setNewProductData] = useState<CreateProductRequest | null>(null);

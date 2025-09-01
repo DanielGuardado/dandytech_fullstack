@@ -109,9 +109,9 @@ class CatalogRepo:
                 ;WITH base AS (
                   SELECT cp.catalog_product_id, cp.title, cp.category_id, c.name AS category_name,
                          b.name AS brand, cp.upc, cp.pricecharting_id, g.platform_id, p.name AS platform_name, p.short_name,
-                         CASE WHEN cp.title = :q THEN 200 ELSE 0 END +
-                         CASE WHEN cp.title LIKE :q + '%' THEN 100 ELSE 0 END +
-                         CASE WHEN cp.title LIKE '%' + :q + '%' THEN 20 ELSE 0 END +
+                         CASE WHEN LOWER(cp.title) = LOWER(:q) THEN 200 ELSE 0 END +
+                         CASE WHEN LOWER(cp.title) LIKE LOWER(:q) + '%' THEN 100 ELSE 0 END +
+                         CASE WHEN LOWER(cp.title) LIKE '%' + LOWER(:q) + '%' THEN 20 ELSE 0 END +
                          CASE WHEN (:pid IS NOT NULL AND g.platform_id = :pid) THEN 50 ELSE 0 END
                          AS score
                   FROM dbo.CatalogProducts cp
@@ -121,7 +121,7 @@ class CatalogRepo:
                   LEFT JOIN dbo.Platforms p ON p.platform_id = g.platform_id
                   WHERE (:cid IS NULL OR cp.category_id = :cid)
                     AND (:pid IS NULL OR g.platform_id = :pid)
-                    AND (:q = '' OR cp.title LIKE '%' + :q + '%')
+                    AND (:q = '' OR LOWER(cp.title) LIKE '%' + LOWER(:q) + '%')
                 )
                 SELECT catalog_product_id, title, category_id, category_name,
                        brand, upc, pricecharting_id, platform_id, platform_name, short_name

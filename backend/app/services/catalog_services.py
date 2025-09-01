@@ -33,12 +33,49 @@ def extract_platform_hint(q: str) -> Tuple[str, Optional[str]]:
     return q_norm, None
 
 
+def normalize_search_text(text: str) -> str:
+    """Remove punctuation and normalize spacing for better search matching"""
+    # Remove common punctuation: periods, apostrophes, commas, colons, semicolons, exclamation marks, question marks
+    # Keep hyphens and underscores as they're often meaningful in game titles
+    normalized = re.sub(r"[.'\",;:!?]", "", text)
+    # Normalize multiple spaces to single spaces
+    normalized = re.sub(r'\s+', ' ', normalized)
+    return normalized.strip()
+
+
 def transform_search_query(q: str) -> List[str]:
     """Generate multiple search variations for better matching"""
     if not q or not q.strip():
         return [q]
     
     variations = [q]
+    
+    # 0. Add punctuation-normalized version
+    normalized_q = normalize_search_text(q)
+    if normalized_q != q and normalized_q:
+        variations.append(normalized_q)
+    
+    # Also try adding common punctuation patterns for games like F.E.A.R.
+    # If the query is all letters, try variations with periods between letters
+    q_upper = q.upper()
+    if len(q_upper) >= 2 and q_upper.isalpha():
+        # For short queries like "FEAR", try "F.E.A.R." style
+        if len(q_upper) <= 6:
+            dotted_version = '.'.join(q_upper) + '.'
+            variations.append(dotted_version)
+    
+    # Try adding apostrophes for possessives (e.g., "luigis mansion" -> "luigi's mansion")
+    words = q.lower().split()
+    for i, word in enumerate(words):
+        if word.endswith('s') and len(word) > 2:
+            # Try adding apostrophe before the 's' 
+            possessive_word = word[:-1] + "'s"
+            possessive_phrase = words.copy()
+            possessive_phrase[i] = possessive_word
+            title_version = ' '.join(possessive_phrase).title()
+            lower_version = ' '.join(possessive_phrase)
+            variations.append(title_version)
+            variations.append(lower_version)
     
     # 1. Roman numeral conversions (bidirectional)
     ROMAN_MAP = {
@@ -50,12 +87,19 @@ def transform_search_query(q: str) -> List[str]:
     for num, roman in ROMAN_MAP.items():
         if f' {num}' in q or q.endswith(f' {num}') or q == num:
             variations.append(re.sub(f'\\b{num}\\b', roman, q))
+        # Also try on normalized version
+        if normalized_q and (f' {num}' in normalized_q or normalized_q.endswith(f' {num}') or normalized_q == num):
+            variations.append(re.sub(f'\\b{num}\\b', roman, normalized_q))
     
     # Convert roman numerals to numbers  
     q_upper = q.upper()
+    normalized_q_upper = normalized_q.upper() if normalized_q else ""
     for num, roman in ROMAN_MAP.items():
         if f' {roman}' in q_upper or q_upper.endswith(f' {roman}') or q_upper == roman:
             variations.append(re.sub(f'\\b{roman}\\b', num, q, flags=re.IGNORECASE))
+        # Also try on normalized version
+        if normalized_q_upper and (f' {roman}' in normalized_q_upper or normalized_q_upper.endswith(f' {roman}') or normalized_q_upper == roman):
+            variations.append(re.sub(f'\\b{roman}\\b', num, normalized_q, flags=re.IGNORECASE))
     
     # 2. Game abbreviation expansions
     GAME_ABBREVIATIONS = {
@@ -78,18 +122,22 @@ def transform_search_query(q: str) -> List[str]:
         'dmc': 'devil may cry'
     }
     
-    q_words = q.lower().split()
-    for abbrev, full_name in GAME_ABBREVIATIONS.items():
-        if abbrev in q_words:
-            # Replace just the abbreviation word
-            new_words = [full_name if word == abbrev else word for word in q_words]
-            variations.append(' '.join(new_words))
+    # Try abbreviation expansion on both original and normalized queries
+    for base_query in [q, normalized_q]:
+        if not base_query:
+            continue
+        q_words = base_query.lower().split()
+        for abbrev, full_name in GAME_ABBREVIATIONS.items():
+            if abbrev in q_words:
+                # Replace just the abbreviation word
+                new_words = [full_name if word == abbrev else word for word in q_words]
+                variations.append(' '.join(new_words))
     
     # Remove duplicates while preserving order (original query first)
     seen = set()
     unique_variations = []
     for variation in variations:
-        if variation not in seen:
+        if variation and variation not in seen:
             seen.add(variation)
             unique_variations.append(variation)
     
