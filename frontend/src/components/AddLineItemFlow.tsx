@@ -203,7 +203,31 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   const handleProductSelected = (product: Product) => {
     setSelectedProduct(product);
     setAvailableVariants(product.variants);
-    setCurrentStep('select-variant');
+    
+    if (product.variants.length === 0) {
+      // No variants exist - need to create them
+      const category = categories.find(c => c.category_id === product.category_id);
+      
+      if (category?.name === 'Video Game') {
+        // Video game without variants - redirect to PriceCharting link
+        setCreatedProductId(product.catalog_product_id);
+        setNewProductData({
+          title: product.title,
+          category_id: product.category_id,
+          brand: product.brand,
+          upc: product.upc,
+          game: product.platform ? { platform_id: product.platform.platform_id } : undefined
+        } as CreateProductRequest);
+        setCurrentStep('pc-link');
+      } else {
+        // Non-game without variants - go to manual variant creation
+        setCreatedProductId(product.catalog_product_id);
+        setCurrentStep('create-variant');
+      }
+    } else {
+      // Has variants - normal flow
+      setCurrentStep('select-variant');
+    }
   };
 
   const handleCreateNewProduct = (query: string) => {
