@@ -438,10 +438,11 @@ class PurchaseCalculatorService:
         # Get fee configuration (convert Decimals to floats)
         if is_console:
             variable_fee_rate = float(config["variable_fee_consoles"]["config_value"]) / 100
-            shipping_cost = float(config["average_shipping_cost_consoles"]["config_value"])
         else:
             variable_fee_rate = float(config["variable_fee_games"]["config_value"]) / 100
-            shipping_cost = float(config["average_shipping_cost"]["config_value"])
+        
+        # Use shipping cost from item data (provided by frontend)
+        shipping_cost = float(item_data.get("shipping_cost", 0))
         
         # Supplies cost based on sale price threshold (not final value)
         supplies_cost = (float(config["shipping_supplies_cost_under_40"]["config_value"]) 

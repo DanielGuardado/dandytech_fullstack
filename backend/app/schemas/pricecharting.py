@@ -20,6 +20,8 @@ class LinkedVariant(BaseModel):
     variant_id: int
     variant_type_code: str
     current_market_value: Optional[float] = None
+    platform_short: Optional[str] = None
+    platform_manual_sensitive: Optional[bool] = None
 
 class PCLinkResponse(BaseModel):
     catalog_product_id: int

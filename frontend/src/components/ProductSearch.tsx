@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Product } from '../types/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Product, Platform } from '../types/api';
 import { catalogService } from '../services/catalogService';
 
 interface ProductSearchProps {
   onProductSelected: (product: Product) => void;
   onCreateNew: (query: string) => void;
+  platformMode?: Platform | null;
 }
 
 const ProductSearch: React.FC<ProductSearchProps> = ({
   onProductSelected,
-  onCreateNew
+  onCreateNew,
+  platformMode
 }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Product[]>([]);
@@ -27,7 +29,18 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
     setError(null);
 
     try {
-      const response = await catalogService.searchProducts(searchQuery);
+      // Auto-append platform to search query if platform mode is active
+      let finalQuery = searchQuery.trim();
+      if (platformMode && platformMode.short_name) {
+        // Check if platform is not already in the query
+        const platformName = platformMode.short_name.toLowerCase();
+        const queryLower = finalQuery.toLowerCase();
+        if (!queryLower.includes(platformName)) {
+          finalQuery = `${finalQuery} ${platformMode.short_name}`;
+        }
+      }
+      
+      const response = await catalogService.searchProducts(finalQuery, platformMode?.short_name);
       setResults(response.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
@@ -35,7 +48,7 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [platformMode]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -80,7 +93,17 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
   };
 
   const handleCreateNew = () => {
-    onCreateNew(query);
+    // Auto-append platform to create new query if platform mode is active
+    let finalQuery = query.trim();
+    if (platformMode && platformMode.short_name) {
+      // Check if platform is not already in the query
+      const platformName = platformMode.short_name.toLowerCase();
+      const queryLower = finalQuery.toLowerCase();
+      if (!queryLower.includes(platformName)) {
+        finalQuery = `${finalQuery} ${platformMode.short_name}`;
+      }
+    }
+    onCreateNew(finalQuery);
   };
 
   return (
@@ -88,7 +111,11 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
       <div className="search-input-container">
         <input
           type="text"
-          placeholder="Search products or press Enter to create new..."
+          placeholder={
+            platformMode 
+              ? `Search ${platformMode.short_name || platformMode.name} games or press Enter to create new...`
+              : "Search products or press Enter to create new..."
+          }
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}

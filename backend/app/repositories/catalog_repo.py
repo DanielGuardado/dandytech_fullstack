@@ -238,7 +238,7 @@ class CatalogRepo:
             text("""
                 SELECT cp.catalog_product_id, cp.title,cp.upc, cp.category_id, c.name AS category_name,
                        cp.pricecharting_id, cp.not_on_pc,
-                       p.short_name AS platform_short
+                       p.short_name AS platform_short, p.video_game_manual_sensitive AS platform_manual_sensitive
                 FROM dbo.CatalogProducts cp
                 JOIN dbo.Categories c ON c.category_id = cp.category_id
                 LEFT JOIN dbo.CatalogProductGames g ON g.catalog_product_id = cp.catalog_product_id

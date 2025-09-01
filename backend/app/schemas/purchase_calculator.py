@@ -68,6 +68,7 @@ class CalculatorItemCreate(BaseModel):
     deductions: Optional[float] = Field(None, ge=0, description="Total amount to deduct from estimated sale price")
     deduction_reasons: Optional[Dict[str, float]] = Field(None, description="Dictionary of reason to amount deductions")
     has_manual: Optional[bool] = Field(None, description="Whether CIB item includes manual")
+    shipping_cost: float = Field(..., ge=0, description="Shipping cost for this item (0 is valid for free shipping)")
     target_profit_percentage: float = Field(25.0, ge=0, le=100)
     quantity: int = Field(1, ge=1)
     notes: Optional[str] = None
@@ -78,6 +79,7 @@ class CalculatorItemUpdate(BaseModel):
     deductions: Optional[float] = Field(None, ge=0, description="Total amount to deduct from estimated sale price")
     deduction_reasons: Optional[Dict[str, float]] = Field(None, description="Dictionary of reason to amount deductions")
     has_manual: Optional[bool] = Field(None, description="Whether CIB item includes manual")
+    shipping_cost: Optional[float] = Field(None, ge=0, description="Shipping cost for this item")
     target_profit_percentage: Optional[float] = Field(None, ge=0, le=100)
     quantity: Optional[int] = Field(None, ge=1)
     notes: Optional[str] = None

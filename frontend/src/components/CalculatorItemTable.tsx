@@ -137,6 +137,7 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Price deductions (e.g. missing manual)">Deductions</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Sale $</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Fees</th>
+          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Shipping cost for this item">Shipping</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Net $</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Earnings</th>
           <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Profit margin after all fees and costs">Margin % 📊</th>
@@ -249,7 +250,11 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
                 </CalculatorTooltip>
               ) : '-'}
             </td>
-            {/* 10. Net $ - teal color */}
+            {/* 10. Shipping Cost - green color */}
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#28a745' }}>
+              {calculatorService.formatCurrency(item.shipping_cost || 0)}
+            </td>
+            {/* 11. Net $ - teal color */}
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#17a2b8' }}>
               {item.net_after_fees ? (
                 <CalculatorTooltip content={getNetTooltip(item)}>

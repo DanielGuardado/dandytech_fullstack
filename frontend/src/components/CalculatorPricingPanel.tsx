@@ -25,6 +25,7 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
   const [overridePrice, setOverridePrice] = useState<string>('');
   const [useOverride, setUseOverride] = useState(false);
   const [markupAmount, setMarkupAmount] = useState<string>('');
+  const [shippingCost, setShippingCost] = useState<string>('');
   const [targetProfitPercentage, setTargetProfitPercentage] = useState<string>('25');
   const [quantity, setQuantity] = useState<string>('1');
   const [notes, setNotes] = useState<string>('');
@@ -97,23 +98,40 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
       setMarkupAmount(defaultMarkup.toString());
     }
 
+    // Set default shipping cost based on item type
+    // Determine if this is likely a console by checking the product title
+    const isConsole = productTitle.toLowerCase().includes('console') || 
+                     productTitle.toLowerCase().includes('system') ||
+                     /ps[2345]|xbox|switch|wii/i.test(productTitle);
+    
+    if (isConsole) {
+      const defaultConsoleShipping = config.average_shipping_cost_consoles?.config_value || 12.00;
+      setShippingCost(defaultConsoleShipping.toString());
+    } else if (selectedVariant.variant_type_code) {
+      // For video games, use game shipping cost
+      const defaultGameShipping = config.average_shipping_cost?.config_value || 4.40;
+      setShippingCost(defaultGameShipping.toString());
+    }
+    // For other items, leave shipping cost empty (user must enter)
+
     // Auto-focus market price field
     setTimeout(() => {
       if (marketPriceRef.current) {
         marketPriceRef.current.focus();
       }
     }, 100);
-  }, [selectedVariant, config]);
+  }, [selectedVariant, config, productTitle]);
 
   // Recalculate when inputs change
   useEffect(() => {
     const basePrice = parseFloat(useOverride ? overridePrice : marketPrice);
     const markup = parseFloat(markupAmount);
+    const shipping = parseFloat(shippingCost);
     const profit = parseFloat(targetProfitPercentage);
     const qty = parseInt(quantity);
 
-    if (isNaN(basePrice) || isNaN(markup) || isNaN(profit) || isNaN(qty) || 
-        basePrice <= 0 || markup < 0 || profit < 0 || qty <= 0) {
+    if (isNaN(basePrice) || isNaN(markup) || isNaN(shipping) || isNaN(profit) || isNaN(qty) || 
+        basePrice <= 0 || markup < 0 || shipping < 0 || profit < 0 || qty <= 0) {
       setCalculations(null);
       return;
     }
@@ -137,14 +155,15 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
     const salesTax = estimatedSalePrice * salesTaxRate;
     const finalValue = estimatedSalePrice + salesTax;
     
-    // Step 2: Determine if this is a game or console (assume game for now)
-    const isConsole = false; // TODO: Could check variant type or category
+    // Step 2: Determine if this is a game or console for fee calculation
+    const isConsole = productTitle.toLowerCase().includes('console') || 
+                     productTitle.toLowerCase().includes('system') ||
+                     /ps[2345]|xbox|switch|wii/i.test(productTitle);
     const variableFeeRate = isConsole 
       ? (config.variable_fee_consoles?.config_value || 7.35) / 100
       : (config.variable_fee_games?.config_value || 12.7) / 100;
-    const shippingCost = isConsole 
-      ? (config.average_shipping_cost_consoles?.config_value || 12.00)
-      : (config.average_shipping_cost?.config_value || 4.40);
+    
+    // Use shipping cost from form input (not calculated)
     
     // Supplies cost based on sale price threshold
     const suppliesCost = estimatedSalePrice <= 40 
@@ -165,13 +184,13 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
     const adFee = finalValue * adFeeRate;
     
     // Step 6: Total fees
-    const totalFees = transactionFee + adFee + shippingCost + suppliesCost;
+    const totalFees = transactionFee + adFee + shipping + suppliesCost;
     
     // Step 7: Calculate cashback (money back to us)
     const regularCashbackRate = (config.regular_cashback_rate?.config_value || 1.0) / 100;
     const shippingCashbackRate = (config.shipping_cashback_rate?.config_value || 3.0) / 100;
     const regularCashback = estimatedSalePrice * regularCashbackRate;
-    const shippingCashback = shippingCost * shippingCashbackRate;
+    const shippingCashback = shipping * shippingCashbackRate;
     const totalCashback = regularCashback + shippingCashback;
     
     // Step 8: Net after fees (we collect tax but remit it, so it nets out)
@@ -190,7 +209,7 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
       discountedVariableFee,
       transactionFee,
       adFee,
-      shippingCost,
+      shippingCost: shipping,
       suppliesCost,
       regularCashback,
       shippingCashback,
@@ -201,7 +220,7 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
       profitPerItem,
       profitMargin
     });
-  }, [marketPrice, overridePrice, useOverride, markupAmount, targetProfitPercentage, quantity, hasManual, customDeductions, selectedVariant.variant_type_code, config]);
+  }, [marketPrice, overridePrice, useOverride, markupAmount, shippingCost, targetProfitPercentage, quantity, hasManual, customDeductions, selectedVariant.variant_type_code, config, productTitle]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,6 +253,7 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
       deductions: finalDeductions > 0 ? finalDeductions : undefined,
       deduction_reasons: Object.keys(deductionReasons).length > 0 ? deductionReasons : undefined,
       has_manual: isCIB ? hasManual : undefined, // Only set for CIB items
+      shipping_cost: parseFloat(shippingCost),
       target_profit_percentage: parseFloat(targetProfitPercentage),
       quantity: parseInt(quantity),
       notes: notes.trim() || undefined
@@ -390,6 +410,40 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
                 fontFamily: 'monospace'
               }}
               {...addFocusHandlers()}
+              required
+            />
+          </div>
+
+          {/* Shipping Cost */}
+          <div style={{ flex: 1 }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '12px', 
+              fontWeight: 'bold', 
+              color: '#6c757d', 
+              marginBottom: '4px',
+              textTransform: 'uppercase'
+            }}>
+              Shipping $ *
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={shippingCost}
+              onChange={(e) => setShippingCost(e.target.value)}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                fontSize: '14px',
+                textAlign: 'right',
+                fontFamily: 'monospace'
+              }}
+              {...addFocusHandlers()}
+              placeholder="0.00"
               required
             />
           </div>

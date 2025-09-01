@@ -69,6 +69,9 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   // Default variant mode for auto-highlighting when adding items (internal state)
   const [internalDefaultVariantMode, setInternalDefaultVariantMode] = useState<string>('NEW');
   
+  // Platform mode for auto-appending platform to search queries (internal state)
+  const [platformMode, setPlatformMode] = useState<number | null>(null);
+  
   // Set default variant mode when variantTypes loads
   React.useEffect(() => {
     if (variantTypes.length > 0 && internalDefaultVariantMode === 'NEW') {
@@ -78,6 +81,22 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
       }
     }
   }, [variantTypes, internalDefaultVariantMode]);
+  
+  // Get video game platforms for platform mode selector (find by category name "Video Game")
+  const videoGamePlatforms = React.useMemo(() => {
+    const videoGameCategory = categories.find(c => c.name === 'Video Game');
+    if (!videoGameCategory) return [];
+    
+    // Filter platforms by Video Game category (platforms don't have is_active property)
+    return platforms.filter(p => p.category_id === videoGameCategory.category_id)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [platforms, categories]);
+  
+  // Get selected platform info for display
+  const selectedPlatform = React.useMemo(() => {
+    if (!platformMode) return null;
+    return videoGamePlatforms.find(p => p.platform_id === platformMode);
+  }, [platformMode, videoGamePlatforms]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [newProductData, setNewProductData] = useState<CreateProductRequest | null>(null);
   const [createdProductId, setCreatedProductId] = useState<number | null>(null);
@@ -271,6 +290,8 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           display_name: variantType?.display_name || `${linkedVariant.variant_type_code} Variant`,
           current_market_value: linkedVariant.current_market_value,
           default_list_price: linkedVariant.current_market_value,
+          platform_short: linkedVariant.platform_short,
+          platform_manual_sensitive: linkedVariant.platform_manual_sensitive,
         };
       });
       setAvailableVariants(transformedVariants);
@@ -372,40 +393,9 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
         flexShrink: 0,
         minHeight: '32px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1d1d1f', margin: '0' }}>
-            {mode === 'calculator' ? 'Add Calculator Item' : 'Add Line Item'}
-          </h4>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px',
-            fontSize: '10px',
-            color: '#6c757d'
-          }}>
-            <span>Variant default:</span>
-            <select
-              value={internalDefaultVariantMode}
-              onChange={(e) => setInternalDefaultVariantMode(e.target.value)}
-              style={{
-                padding: '4px 6px',
-                fontSize: '10px',
-                border: '1px solid #6c757d',
-                borderRadius: '3px',
-                background: '#fff',
-                color: '#6c757d',
-                cursor: 'pointer',
-                fontWeight: 'normal'
-              }}
-            >
-              {variantTypes.filter(vt => vt.is_active).map((variantType) => (
-                <option key={variantType.code} value={variantType.code}>
-                  {variantType.display_name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#1d1d1f', margin: '0' }}>
+          {mode === 'calculator' ? 'Add Calculator Item' : 'Add Line Item'}
+        </h4>
         <div className="flow-actions" style={{ display: 'flex', gap: '8px' }}>
           {currentStep !== 'search' && (
             <button 
@@ -443,6 +433,76 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
         </div>
       </div>
 
+      <div className="mode-selector-bar" style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '16px',
+        padding: '8px 12px',
+        background: '#f8f9fa',
+        borderBottom: '1px solid #dee2e6',
+        fontSize: '10px',
+        color: '#6c757d',
+        flexShrink: 0
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>Variant default:</span>
+          <select
+            value={internalDefaultVariantMode}
+            onChange={(e) => setInternalDefaultVariantMode(e.target.value)}
+            style={{
+              padding: '4px 6px',
+              fontSize: '10px',
+              border: '1px solid #6c757d',
+              borderRadius: '3px',
+              background: '#fff',
+              color: '#6c757d',
+              cursor: 'pointer',
+              fontWeight: 'normal'
+            }}
+          >
+            {variantTypes.filter(vt => vt.is_active).map((variantType) => (
+              <option key={variantType.code} value={variantType.code}>
+                {variantType.display_name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>Platform mode:</span>
+          <select
+            value={platformMode || ''}
+            onChange={(e) => setPlatformMode(e.target.value ? parseInt(e.target.value) : null)}
+            style={{
+              padding: '4px 6px',
+              fontSize: '10px',
+              border: '1px solid #6c757d',
+              borderRadius: '3px',
+              background: platformMode ? '#e3f2fd' : '#fff',
+              color: platformMode ? '#1976d2' : '#6c757d',
+              cursor: 'pointer',
+              fontWeight: platformMode ? 'bold' : 'normal'
+            }}
+          >
+            <option value="">None</option>
+            {videoGamePlatforms.map((platform) => (
+              <option key={platform.platform_id} value={platform.platform_id}>
+                {platform.short_name || platform.name}
+              </option>
+            ))}
+          </select>
+          {selectedPlatform && (
+            <span style={{ 
+              fontSize: '9px', 
+              color: '#1976d2', 
+              fontStyle: 'italic' 
+            }}>
+              (Auto-appending "{selectedPlatform.short_name || selectedPlatform.name}" to searches)
+            </span>
+          )}
+        </div>
+      </div>
+
       <div style={{ 
         flex: 1, 
         overflow: 'auto',
@@ -467,6 +527,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           <ProductSearch
             onProductSelected={handleProductSelected}
             onCreateNew={handleCreateNewProduct}
+            platformMode={selectedPlatform}
           />
         )}
 

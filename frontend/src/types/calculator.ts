@@ -119,6 +119,7 @@ export interface CalculatorItemCreate {
   deductions?: number;
   deduction_reasons?: Record<string, number>;
   has_manual?: boolean;
+  shipping_cost: number;
   target_profit_percentage?: number;
   quantity?: number;
   notes?: string;
@@ -130,6 +131,7 @@ export interface CalculatorItemUpdate {
   deductions?: number;
   deduction_reasons?: Record<string, number>;
   has_manual?: boolean;
+  shipping_cost?: number;
   target_profit_percentage?: number;
   quantity?: number;
   notes?: string;

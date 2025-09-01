@@ -193,12 +193,20 @@ class PriceChartingService:
             # Upsert variants (create if missing; update current_market_value including NULLs)
             linked_variants = []
             if create_variants:
+                # Get platform information from product context
+                ctx = self.repo.get_product_context(catalog_product_id)
+                platform_short = ctx.get("platform_short")
+                platform_manual_sensitive = ctx.get("platform_manual_sensitive")
+                
                 for vt_code in ("LOOSE", "CIB", "NEW"):
                     v = self.repo.upsert_variant_and_value(
                         catalog_product_id=catalog_product_id,
                         vt_code=vt_code,
                         value=values.get(vt_code),
                     )
+                    # Add platform information to the variant data
+                    v["platform_short"] = platform_short
+                    v["platform_manual_sensitive"] = platform_manual_sensitive
                     linked_variants.append(v)
 
             self.db.commit()
