@@ -477,13 +477,15 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
       <div className="mode-selector-bar" style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: '16px',
+        gap: '12px',
         padding: '8px 12px',
         background: '#f8f9fa',
         borderBottom: '1px solid #dee2e6',
         fontSize: '10px',
         color: '#6c757d',
-        flexShrink: 0
+        flexShrink: 0,
+        flexWrap: 'wrap',
+        minHeight: '32px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span>Variant default:</span>

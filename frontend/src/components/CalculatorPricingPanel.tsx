@@ -59,6 +59,27 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
     }
   }, [selectedVariant?.variant_type_code, isPlatformManualSensitive, manualIncludedMode]);
 
+  // Keyboard shortcut for toggling manual checkbox
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only for CIB variants and when 'M' is pressed without modifiers
+      if (selectedVariant?.variant_type_code === 'CIB' && 
+          e.key.toLowerCase() === 'm' && 
+          !e.ctrlKey && !e.altKey && !e.metaKey) {
+        
+        // Don't trigger if typing in notes field
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'TEXTAREA') return;
+        
+        e.preventDefault();
+        setHasManual(prev => !prev);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedVariant?.variant_type_code]);
+
   // Calculated values
   const [calculations, setCalculations] = useState<{
     estimatedSalePrice: number;
@@ -606,6 +627,14 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
                   }}
                 />
                 📖 Includes Manual
+                <span style={{ 
+                  color: '#6c757d', 
+                  fontSize: '10px', 
+                  marginLeft: '8px',
+                  fontStyle: 'italic' 
+                }}>
+                  (Press M to toggle)
+                </span>
                 {!hasManual && isPlatformManualSensitive && (
                   <span style={{ color: '#dc3545', fontSize: '10px', marginLeft: '4px' }}>
                     (Will deduct ${parseFloat(markupAmount) || 0} from sale price)

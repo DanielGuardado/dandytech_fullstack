@@ -109,6 +109,7 @@ class CatalogRepo:
                 ;WITH base AS (
                   SELECT cp.catalog_product_id, cp.title, cp.category_id, c.name AS category_name,
                          b.name AS brand, cp.upc, cp.pricecharting_id, g.platform_id, p.name AS platform_name, p.short_name,
+                         CASE WHEN cp.title = :q THEN 200 ELSE 0 END +
                          CASE WHEN cp.title LIKE :q + '%' THEN 100 ELSE 0 END +
                          CASE WHEN cp.title LIKE '%' + :q + '%' THEN 20 ELSE 0 END +
                          CASE WHEN (:pid IS NOT NULL AND g.platform_id = :pid) THEN 50 ELSE 0 END

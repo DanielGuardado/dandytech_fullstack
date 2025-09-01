@@ -33,6 +33,69 @@ def extract_platform_hint(q: str) -> Tuple[str, Optional[str]]:
     return q_norm, None
 
 
+def transform_search_query(q: str) -> List[str]:
+    """Generate multiple search variations for better matching"""
+    if not q or not q.strip():
+        return [q]
+    
+    variations = [q]
+    
+    # 1. Roman numeral conversions (bidirectional)
+    ROMAN_MAP = {
+        '2': 'II', '3': 'III', '4': 'IV', '5': 'V',
+        '6': 'VI', '7': 'VII', '8': 'VIII', '9': 'IX', '10': 'X'
+    }
+    
+    # Convert numbers to roman numerals
+    for num, roman in ROMAN_MAP.items():
+        if f' {num}' in q or q.endswith(f' {num}') or q == num:
+            variations.append(re.sub(f'\\b{num}\\b', roman, q))
+    
+    # Convert roman numerals to numbers  
+    q_upper = q.upper()
+    for num, roman in ROMAN_MAP.items():
+        if f' {roman}' in q_upper or q_upper.endswith(f' {roman}') or q_upper == roman:
+            variations.append(re.sub(f'\\b{roman}\\b', num, q, flags=re.IGNORECASE))
+    
+    # 2. Game abbreviation expansions
+    GAME_ABBREVIATIONS = {
+        'gta': 'grand theft auto',
+        'cod': 'call of duty', 
+        'ac': 'assassins creed',
+        'bf': 'battlefield',
+        'nfs': 'need for speed',
+        'gow': 'god of war',
+        'tlou': 'the last of us',
+        'rdr': 'red dead',
+        'mgs': 'metal gear solid',
+        'ff': 'final fantasy',
+        'gh': 'guitar hero',
+        're': 'resident evil',
+        'sf': 'street fighter',
+        'mk': 'mortal kombat',
+        'tes': 'the elder scrolls',
+        'fo': 'fallout',
+        'dmc': 'devil may cry'
+    }
+    
+    q_words = q.lower().split()
+    for abbrev, full_name in GAME_ABBREVIATIONS.items():
+        if abbrev in q_words:
+            # Replace just the abbreviation word
+            new_words = [full_name if word == abbrev else word for word in q_words]
+            variations.append(' '.join(new_words))
+    
+    # Remove duplicates while preserving order (original query first)
+    seen = set()
+    unique_variations = []
+    for variation in variations:
+        if variation not in seen:
+            seen.add(variation)
+            unique_variations.append(variation)
+    
+    return unique_variations
+
+
 class CatalogService:
     def __init__(self, db: Session):
         self.db = db
@@ -46,20 +109,54 @@ class CatalogService:
         q = (q or "").strip()
         upc = (upc or "").strip() or None
 
-        # If no explicit platform, try to infer from q
-        inferred_pid = None
-        q_text = q
-        if not platform_id and q:
-            q_text, token = extract_platform_hint(q)
-            if token:
-                inferred_pid = self.repo.platform_id_from_token(token)
+        # Generate search query variations for better matching
+        search_queries = transform_search_query(q) if q else [q]
+        
+        # Collect results from all variations
+        all_results = []
+        seen_ids = set()
+        remaining_limit = limit
+        
+        for query_variation in search_queries:
+            if remaining_limit <= 0:
+                break
+                
+            # If no explicit platform, try to infer from query variation
+            inferred_pid = None
+            q_text = query_variation
+            if not platform_id and query_variation:
+                q_text, token = extract_platform_hint(query_variation)
+                if token:
+                    inferred_pid = self.repo.platform_id_from_token(token)
 
-        final_platform_id = platform_id or inferred_pid
+            final_platform_id = platform_id or inferred_pid
 
-        total = self.repo.count_catalog(q_text=q_text, upc=upc, category_id=category_id, platform_id=final_platform_id)
-        rows = self.repo.search_catalog_page(q_text=q_text, upc=upc, category_id=category_id,
-                                             platform_id=final_platform_id, limit=limit, offset=offset)
+            # Search with this variation
+            rows = self.repo.search_catalog_page(q_text=q_text, upc=upc, category_id=category_id,
+                                                 platform_id=final_platform_id, limit=remaining_limit, offset=offset)
+            
+            # Add unique results (prioritize results from original query)
+            for row in rows:
+                if row["catalog_product_id"] not in seen_ids:
+                    seen_ids.add(row["catalog_product_id"])
+                    all_results.append(row)
+                    remaining_limit -= 1
+                    if remaining_limit <= 0:
+                        break
+
+        # Use all_results instead of rows
+        rows = all_results
         product_ids = [r["catalog_product_id"] for r in rows]
+        
+        # Calculate total count using original query for consistency
+        original_q_text = q
+        original_inferred_pid = None
+        if not platform_id and q:
+            original_q_text, token = extract_platform_hint(q)
+            if token:
+                original_inferred_pid = self.repo.platform_id_from_token(token)
+        original_platform_id = platform_id or original_inferred_pid
+        total = self.repo.count_catalog(q_text=original_q_text, upc=upc, category_id=category_id, platform_id=original_platform_id)
         
         # Check for stale products and refresh their market values
         stale_products = self.repo.get_stale_products_with_pc_id(product_ids)
