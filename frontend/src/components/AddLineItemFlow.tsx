@@ -72,6 +72,9 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
   // Platform mode for auto-appending platform to search queries (internal state)
   const [platformMode, setPlatformMode] = useState<number | null>(null);
   
+  // Manual included mode for controlling manual checkbox behavior (internal state)
+  const [manualIncludedMode, setManualIncludedMode] = useState<'default' | 'no_manual' | 'manual'>('default');
+  
   // Set default variant mode when variantTypes loads
   React.useEffect(() => {
     if (variantTypes.length > 0 && internalDefaultVariantMode === 'NEW') {
@@ -539,6 +542,37 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
             </span>
           )}
         </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>Manual included:</span>
+          <select
+            value={manualIncludedMode}
+            onChange={(e) => setManualIncludedMode(e.target.value as 'default' | 'no_manual' | 'manual')}
+            style={{
+              padding: '4px 6px',
+              fontSize: '10px',
+              border: '1px solid #6c757d',
+              borderRadius: '3px',
+              background: manualIncludedMode !== 'default' ? '#fff5e6' : '#fff',
+              color: manualIncludedMode !== 'default' ? '#ff6b00' : '#6c757d',
+              cursor: 'pointer',
+              fontWeight: manualIncludedMode !== 'default' ? 'bold' : 'normal'
+            }}
+          >
+            <option value="default">Default</option>
+            <option value="no_manual">No Manual</option>
+            <option value="manual">Manual</option>
+          </select>
+          {manualIncludedMode !== 'default' && (
+            <span style={{ 
+              fontSize: '9px', 
+              color: '#ff6b00', 
+              fontStyle: 'italic' 
+            }}>
+              ({manualIncludedMode === 'manual' ? 'Always checked' : 'Always unchecked'})
+            </span>
+          )}
+        </div>
       </div>
 
       <div style={{ 
@@ -634,6 +668,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           config={config}
           onAddItem={handleCalculatorItemAdd}
           loading={loading}
+          manualIncludedMode={manualIncludedMode}
         />
       )}
 

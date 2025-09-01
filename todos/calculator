@@ -28,3 +28,46 @@ After implementing ^
 default - itll do what it normally does by checking to see if it's manual sensitive or not
 no manual - will always tick the checkbox to off
 manual - will always tick the checkbox to on
+
+
+[] we should match things like II to numbers as well for the search
+
+[] dont immidiatly allow for the create new product give it some time to load resutls and then if nothing is returned allow creation, right now if i type borderlands really fast and hit enter wihtout giving the backend time to load it'll prompt me to create a new product
+
+
+[X] bug where if you create a video game and it takes you to the link page. but you just exit out/cancel
+if you load the same item you jsut made it'll show you a product found as expected but now clicking into the product we're left at just a blank screen with no variants (becuse we never linked it to make the variants from the first step)
+so we should really be presented with the reate new variant window when there is no variant or promt us to link to pricecharting which would put us back at the pricecharting window.
+
+do you get what im saying?
+let me show you a flow
+
+hit add item search for a product 
+ill use this as an example.
+sol divide ps1
+i hit create product
+i now just hit cancel
+i hit add item 
+sol divide shows up as a product found 
+now im on an empty screen (where normally it would offer me to select a variant which is where i think i am but since there are none its just blacnk) or link it to pricecharting
+
+
+[X] bug fix on calculator default 
+when adding item for a product that hasn't been created.
+example > 
+god of war collection ps3 
+i click create product
+i link to price charting 
+i select variant CIB
+im taken to the blue CIB Tracking (No price impact)
+this is wrong since it is price sensitive.
+if we reload (now that the item/varint has already been created)
+i look up god of war collection ps3
+i click the already made product > i select cib > the proper yellow 📋 CIB Item Options
+📖 Includes Manual
+Custom Deductions (overrides manual deduction) screen shows up.
+we need that to happen everytime not just when we select from the database
+
+
+[X] add a console mode so that the add calculator item knows im working on 360 instead of me having to type (game name) xbox 360 each time 
+king of like the variant default button but for consoles it should use the same lookup that it uses for the platform dropdown in create new product

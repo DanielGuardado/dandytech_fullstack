@@ -10,6 +10,7 @@ interface CalculatorPricingPanelProps {
   config: Record<string, CalculatorConfig>;
   onAddItem: (item: CalculatorItemCreate) => void;
   loading: boolean;
+  manualIncludedMode?: 'default' | 'no_manual' | 'manual';
 }
 
 const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
@@ -18,7 +19,8 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
   platforms,
   config,
   onAddItem,
-  loading
+  loading,
+  manualIncludedMode = 'default'
 }) => {
   // Form state
   const [marketPrice, setMarketPrice] = useState<string>('');
@@ -36,14 +38,26 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
   const isPlatformManualSensitive = selectedVariant?.platform_manual_sensitive === true;
   
 
-  // Set default hasManual based on platform manual sensitivity
+  // Set default hasManual based on manual included mode and platform manual sensitivity
   React.useEffect(() => {
     if (selectedVariant?.variant_type_code === 'CIB') {
-      // For manual-sensitive platforms: default to true (has manual)
-      // For non-manual-sensitive platforms: default to false (no manual)
-      setHasManual(isPlatformManualSensitive);
+      switch (manualIncludedMode) {
+        case 'no_manual':
+          setHasManual(false);
+          break;
+        case 'manual':
+          setHasManual(true);
+          break;
+        case 'default':
+        default:
+          // Current logic: use platform sensitivity
+          // For manual-sensitive platforms: default to true (has manual)
+          // For non-manual-sensitive platforms: default to false (no manual)
+          setHasManual(isPlatformManualSensitive);
+          break;
+      }
     }
-  }, [selectedVariant?.variant_type_code, isPlatformManualSensitive]);
+  }, [selectedVariant?.variant_type_code, isPlatformManualSensitive, manualIncludedMode]);
 
   // Calculated values
   const [calculations, setCalculations] = useState<{
