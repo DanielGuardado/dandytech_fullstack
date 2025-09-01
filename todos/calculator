@@ -2,13 +2,11 @@
 
 [] while the product search is searching for games i should not be allowed to press enter 
 
-Session Changes
-[] The ability to toggle 'cashback purchase'
- - so this is a session option that should trickle into the items to recalculate. by default cashback should be enabled (we could store this default in configs down the road) right now that's the functionality we have it on for everything and these changes are going to be specificaly for regular_cashback. Since some purchases are made via cash payment i don't get those cashback additions. if we started with cashback on and then swith to cashback off all the line items for total_cashback should switch to 0 for that session. if we are in a toggled off state when adding new items they should be added with 0 already. if we switch back to cashback on for the session we should recalcualte all the line items again and any more added from that point on will include the cashback
+[] in search ignore thingss like . ' , since i dont want to be limited to typing out f.e.a.r to look up fear the game or having to type out luigi's mansion every time
 
 
-[] The ability to toggle tax exempt
-- this is very similar to cashback in the sense that we may not be tax exempt for some purchases the default should be tax exempt on to begin with and really its going to be the same logic and flow as The ability to toggle 'cashback purchase'
+[] if i click on a pricecharitng list item and its already linked to another item find that item and swap it in
+
 
 UI Changes
 [] Consolidate markup and deductions into 1 column - column something like 'adjustments' then we should have a tooltip when we hover over that'll show the breakdown of markups/deductions
@@ -22,7 +20,7 @@ Frontend/Backend integrations
 
 
 
-
+[X] weird issue when i type in mario kart wii it uses the console shipping price??
 
 
 [X] dont immidiatly allow for the create new product give it some time to load resutls and then if nothing is returned allow creation, right now if i type borderlands really fast and hit enter wihtout giving the backend time to load it'll prompt me to create a new product
@@ -85,3 +83,10 @@ maybe one step forward if i type in something like
 gta or cod
 i could see grand theft auto or call of duty results
 this is probably going to be adjustments on the backend specifically since that's handling the search
+
+Session Changes
+[X] The ability to toggle 'cashback purchase'
+ - so this is a session option that should trickle into the items to recalculate. by default cashback should be enabled (we could store this default in configs down the road) right now that's the functionality we have it on for everything and these changes are going to be specificaly for regular_cashback. Since some purchases are made via cash payment i don't get those cashback additions. if we started with cashback on and then swith to cashback off all the line items for total_cashback should switch to 0 for that session. if we are in a toggled off state when adding new items they should be added with 0 already. if we switch back to cashback on for the session we should recalcualte all the line items again and any more added from that point on will include the cashback
+
+[X] The ability to toggle tax exempt
+- this is very similar to cashback in the sense that we may not be tax exempt for some purchases the default should be tax exempt on to begin with and really its going to be the same logic and flow as The ability to toggle 'cashback purchase'

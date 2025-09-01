@@ -4,7 +4,8 @@ import {
 } from '../types/api';
 import {
   CalculatorItem,
-  CalculatorItemUpdate
+  CalculatorItemUpdate,
+  CalculatorConfig
 } from '../types/calculator';
 import { calculatorService } from '../services/calculatorService';
 import CalculatorTooltip from './CalculatorTooltip';
@@ -20,6 +21,7 @@ interface CalculatorItemTableProps {
   onStartEdit: (itemId: number, itemData: CalculatorItem) => void;
   onCancelEdit: () => void;
   canEdit: boolean;
+  config?: Record<string, CalculatorConfig>;
 }
 
 const CalculatorItemTable: React.FC<CalculatorItemTableProps> = ({
@@ -32,7 +34,8 @@ const CalculatorItemTable: React.FC<CalculatorItemTableProps> = ({
   onDeleteItem,
   onStartEdit,
   onCancelEdit,
-  canEdit
+  canEdit,
+  config
 }) => {
 
   // Helper function to generate fee breakdown tooltip content
@@ -86,6 +89,42 @@ Total Deductions: -${calculatorService.formatCurrency(item.deductions)}`;
     }
   };
 
+  // Helper function to generate adjustments tooltip content
+  const getAdjustmentsTooltip = (item: CalculatorItem) => {
+    const markup = item.markup_amount || 0;
+    const deductions = item.deductions || 0;
+    const netAdjustment = markup - deductions;
+    
+    if (markup === 0 && deductions === 0) return null;
+    
+    let content = '📊 ADJUSTMENTS:\n';
+    
+    if (markup > 0) {
+      content += `Markup: +${calculatorService.formatCurrency(markup)}\n`;
+    }
+    
+    if (deductions > 0) {
+      try {
+        const reasons = item.deduction_reasons ? JSON.parse(item.deduction_reasons) : {};
+        if (Object.keys(reasons).length > 0) {
+          content += 'Deductions:\n';
+          Object.entries(reasons).forEach(([reason, amount]: [string, any]) => {
+            content += `- ${reason.replace('_', ' ')}: -${calculatorService.formatCurrency(amount)}\n`;
+          });
+        } else {
+          content += `Deductions: -${calculatorService.formatCurrency(deductions)}\n`;
+        }
+      } catch (e) {
+        content += `Deductions: -${calculatorService.formatCurrency(deductions)}\n`;
+      }
+    }
+    
+    content += '─────────────\n';
+    content += `Net Adjustment: ${netAdjustment >= 0 ? '+' : ''}${calculatorService.formatCurrency(netAdjustment)}`;
+    
+    return content;
+  };
+
   // Helper function to generate sale price tooltip content
   const getSaleTooltip = (item: CalculatorItem) => {
     if (!item.estimated_sale_price) return null;
@@ -100,6 +139,44 @@ Markup: +${calculatorService.formatCurrency(item.markup_amount || 0)}${deduction
 Sale Price: ${calculatorService.formatCurrency(item.estimated_sale_price)}
 Sales Tax (5.09%): ${calculatorService.formatCurrency(salesTax)}
 Final Value: ${calculatorService.formatCurrency(finalValue)}`;
+  };
+
+  const getPurchaseTooltip = (item: CalculatorItem) => {
+    if (!item.calculated_purchase_price) return null;
+    
+    const hasTax = item.purchase_sales_tax && item.purchase_sales_tax > 0;
+    const totalCost = item.calculated_purchase_price + (item.purchase_sales_tax || 0);
+    const targetProfitPercent = item.target_profit_percentage || 25;
+    const targetProfitAmount = (item.net_after_fees || 0) * (targetProfitPercent / 100);
+    const availableBudget = (item.net_after_fees || 0) - targetProfitAmount;
+    
+    // Get local sales tax rate from config
+    const localSalesTaxRate = config?.local_sales_tax?.config_value || 6;
+    
+    const baseTooltip = `💰 PURCHASE CALCULATION:
+Sale Price: ${calculatorService.formatCurrency(item.estimated_sale_price || 0)}
+Total Fees: -${calculatorService.formatCurrency(item.total_fees || 0)}
+Cashback: +${calculatorService.formatCurrency(item.total_cashback || 0)}
+─────────────────
+Net After Fees: ${calculatorService.formatCurrency(item.net_after_fees || 0)}
+Target Profit (${targetProfitPercent}%): -${calculatorService.formatCurrency(targetProfitAmount)}
+─────────────────
+Available Budget: ${calculatorService.formatCurrency(availableBudget)}`;
+    
+    if (hasTax) {
+      return `${baseTooltip}
+
+With ${localSalesTaxRate}% Tax:
+Budget: ${calculatorService.formatCurrency(availableBudget)}
+Tax Reserve: -${calculatorService.formatCurrency(item.purchase_sales_tax || 0)}
+─────────────────
+Offer to Seller: ${calculatorService.formatCurrency(item.calculated_purchase_price)}`;
+    } else {
+      return `${baseTooltip}
+
+✅ Tax Exempt
+Offer to Seller: ${calculatorService.formatCurrency(item.calculated_purchase_price)}`;
+    }
   };
 
   if (items.length === 0) {
@@ -133,8 +210,7 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Current market value from PriceCharting or manual entry">Market $</th>
           <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Percentage of market price for this purchase">% of Market 🎯</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Your maximum purchase price based on target profit">Purchase $</th>
-          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Markup</th>
-          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Price deductions (e.g. missing manual)">Deductions</th>
+          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Net markup and deductions">Adjustments</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Sale $</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px' }}>Fees</th>
           <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', fontSize: '11px', cursor: 'help' }} title="Shipping cost for this item">Shipping</th>
@@ -207,40 +283,42 @@ Final Value: ${calculatorService.formatCurrency(finalValue)}`;
                 </span>
               ) : '-'}
             </td>
-            {/* 6. Purchase $ - show final offer with tax breakdown */}
+            {/* 6. Purchase $ - show final offer with tooltip breakdown */}
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#dc3545' }}>
               {item.calculated_purchase_price ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <span style={{ fontSize: '13px' }}>
+                <CalculatorTooltip content={getPurchaseTooltip(item)}>
+                  <span style={{ cursor: 'help' }}>
                     {calculatorService.formatCurrency(item.calculated_purchase_price)}
                   </span>
-                  {item.purchase_sales_tax && item.purchase_sales_tax > 0 && item.purchase_price_before_tax && (
-                    <span style={{ fontSize: '10px', color: '#6c757d', fontWeight: 'normal' }} 
-                          title={`Pre-tax max: ${calculatorService.formatCurrency(item.purchase_price_before_tax)} - Tax: ${calculatorService.formatCurrency(item.purchase_sales_tax)} = Offer: ${calculatorService.formatCurrency(item.calculated_purchase_price)}`}>
-                      (w/ tax impact)
-                    </span>
-                  )}
-                </div>
-              ) : '-'}
-            </td>
-            {/* 7. Markup */}
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace' }}>
-              {item.markup_amount ? calculatorService.formatCurrency(item.markup_amount) : '-'}
-            </td>
-            {/* 8. Deductions - orange color */}
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', color: '#fd7e14' }}>
-              {item.deductions && item.deductions > 0 ? (
-                <CalculatorTooltip content={getDeductionsTooltip(item)}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', cursor: 'help' }}>
-                    <span style={{ fontWeight: 'bold' }}>
-                      -{calculatorService.formatCurrency(item.deductions)}
-                    </span>
-                    {item.variant_type_code === 'CIB' && item.has_manual === false && (
-                      <span style={{ fontSize: '9px', color: '#6c757d' }}>No Manual</span>
-                    )}
-                  </div>
                 </CalculatorTooltip>
               ) : '-'}
+            </td>
+            {/* 7. Adjustments - combined markup and deductions */}
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace' }}>
+              {(() => {
+                const markup = item.markup_amount || 0;
+                const deductions = item.deductions || 0;
+                const netAdjustment = markup - deductions;
+                
+                if (markup === 0 && deductions === 0) {
+                  return '-';
+                }
+                
+                const color = netAdjustment > 0 ? '#28a745' : netAdjustment < 0 ? '#fd7e14' : '#6c757d';
+                
+                return (
+                  <CalculatorTooltip content={getAdjustmentsTooltip(item)}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', cursor: 'help' }}>
+                      <span style={{ fontWeight: 'bold', color }}>
+                        {netAdjustment >= 0 ? '+' : ''}{calculatorService.formatCurrency(netAdjustment)}
+                      </span>
+                      {item.variant_type_code === 'CIB' && item.has_manual === false && (
+                        <span style={{ fontSize: '9px', color: '#6c757d' }}>No Manual</span>
+                      )}
+                    </div>
+                  </CalculatorTooltip>
+                );
+              })()}
             </td>
             {/* 9. Sale $ - green color */}
             <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', fontFamily: 'monospace', fontWeight: 'bold', color: '#28a745' }}>

@@ -112,7 +112,7 @@ const PurchaseCalculator: React.FC = () => {
       try {
         setLoading(true);
         const newSession = await calculatorService.createSession({
-          session_name: calculatorService.generateSessionName(sources[0]?.name)
+          session_name: calculatorService.generateSessionName()
         });
         
         const sessionDetail = await calculatorService.getSession(newSession.session_id);
@@ -479,6 +479,45 @@ const PurchaseCalculator: React.FC = () => {
                       fontSize: '14px'
                     }}
                   />
+                </div>
+
+                {/* Source Selection */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
+                    Source
+                  </label>
+                  <select
+                    value={sessionData?.source_id || ''}
+                    onChange={async (e) => {
+                      const newSourceId = e.target.value ? parseInt(e.target.value) : undefined;
+                      setSessionData(prev => prev ? { ...prev, source_id: newSourceId } : prev);
+                      
+                      if (sessionId) {
+                        try {
+                          await calculatorService.updateSession(sessionId, { source_id: newSourceId });
+                        } catch (err) {
+                          setError(`Failed to update source: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                          // Revert on error
+                          setSessionData(prev => prev ? { ...prev, source_id: sessionData?.source_id } : prev);
+                        }
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      backgroundColor: '#fff'
+                    }}
+                  >
+                    <option value="">No source selected</option>
+                    {sources.map(source => (
+                      <option key={source.source_id} value={source.source_id}>
+                        {source.name} ({source.code})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Session Options */}
@@ -1015,6 +1054,7 @@ const PurchaseCalculator: React.FC = () => {
                 setEditingItemData(null);
               }}
               canEdit={canAddItems}
+              config={config}
             />
           </div>
         </div>
