@@ -93,7 +93,10 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
     if (selectedVariant) return; // Only handle keyboard navigation when selecting variants
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (availableVariants.length === 0 || loading) return;
+      if (availableVariants.length === 0) return;
+
+      // Prevent actions during loading, but allow navigation
+      const canTakeActions = !loading;
 
       switch (e.key) {
         case 'ArrowDown':
@@ -105,6 +108,9 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
           setSelectedVariantIndex(prev => prev === 0 ? availableVariants.length - 1 : prev - 1);
           break;
         case 'Enter':
+          // Only prevent selection during loading, not navigation
+          if (!canTakeActions) return;
+          
           e.preventDefault();
           if (availableVariants[selectedVariantIndex]) {
             handleVariantSelect(availableVariants[selectedVariantIndex]);
@@ -113,16 +119,13 @@ const VariantSelectPanel: React.FC<VariantSelectPanelProps> = ({
       }
     };
 
-    // Add a small delay to prevent capturing Enter key from ProductSearch
-    const timeoutId = setTimeout(() => {
-      document.addEventListener('keydown', handleKeyDown);
-    }, 200); // 200ms delay to ensure ProductSearch Enter event is fully processed
+    // Set up keyboard listeners immediately, no delay needed
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      clearTimeout(timeoutId);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedVariant, availableVariants, selectedVariantIndex]);
+  }, [selectedVariant, availableVariants, selectedVariantIndex, loading]);
 
   const handleVariantSelect = (variant: ProductVariant) => {
     console.log('Variant selected:', variant, 'mode:', mode);

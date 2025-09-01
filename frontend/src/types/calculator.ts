@@ -28,6 +28,8 @@ export interface CalculatorSession {
   status: 'draft' | 'finalized' | 'converted_to_po';
   purchase_order_id?: number;
   asking_price?: number;
+  cashback_enabled: boolean;
+  tax_exempt: boolean;
   created_at: string;
   updated_at: string;
   source_name?: string;
@@ -48,6 +50,8 @@ export interface CalculatorSessionUpdate {
   source_id?: number;
   status?: 'draft' | 'finalized' | 'converted_to_po';
   asking_price?: number;
+  cashback_enabled?: boolean;
+  tax_exempt?: boolean;
 }
 
 export interface CalculatorSessionListResponse {

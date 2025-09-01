@@ -23,6 +23,7 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
   const [searchQuery, setSearchQuery] = useState(productTitle);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isLinking, setIsLinking] = useState(false);
   const resultListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,10 +38,23 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
     setSelectedIndex(0);
   }, [results]);
 
+  // Handle link with local loading protection
+  const handleLink = async (priceChartingId: string, result: PriceChartingResult) => {
+    if (isLinking || loading) return; // Prevent double-calls
+    
+    setIsLinking(true);
+    try {
+      await onLink(priceChartingId, result);
+    } finally {
+      // Reset local state after a delay to ensure parent state has updated
+      setTimeout(() => setIsLinking(false), 100);
+    }
+  };
+
   // Add keyboard event listener for navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!hasSearched || results.length === 0 || loading) return;
+      if (!hasSearched || results.length === 0 || loading || isLinking) return;
 
       switch (e.key) {
         case 'ArrowDown':
@@ -54,7 +68,7 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
         case 'Enter':
           e.preventDefault();
           if (results[selectedIndex]) {
-            onLink(results[selectedIndex].id, results[selectedIndex]);
+            handleLink(results[selectedIndex].id, results[selectedIndex]);
           }
           break;
         case 'Escape':
@@ -67,7 +81,7 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
     // Add event listener to the document
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [hasSearched, results, selectedIndex, onLink, onSkip, loading]);
+  }, [hasSearched, results, selectedIndex, loading, isLinking]);
 
   const handleSearch = () => {
     onSearch(searchQuery, upc);
@@ -125,7 +139,42 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
 
       {hasSearched && !loading && (
         <div className="pc-results">
-          {results.length === 0 ? (
+          {isLinking ? (
+            <div className="pc-linking-state">
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  border: '3px solid #f3f3f3',
+                  borderTop: '3px solid #007bff',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  marginBottom: '16px'
+                }}></div>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  color: '#495057',
+                  marginBottom: '8px'
+                }}>
+                  Setting up variants...
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  color: '#6c757d'
+                }}>
+                  Creating product variants from PriceCharting data
+                </div>
+              </div>
+            </div>
+          ) : results.length === 0 ? (
             <div className="no-pc-results">
               <div className="no-results-message">
                 No matches found on PriceCharting
@@ -153,11 +202,8 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
                   <div 
                     key={index}
                     className={`pc-result-item ${index === selectedIndex ? 'selected' : ''}`}
-                    onClick={loading ? undefined : () => onLink(result.id, result)}
-                    style={{
-                      opacity: loading ? 0.6 : 1,
-                      cursor: loading ? 'not-allowed' : 'pointer'
-                    }}
+                    onClick={() => handleLink(result.id, result)}
+                    style={{ cursor: 'pointer' }}
                   >
                     <div className="pc-result-info">
                       <div className="pc-result-title">{result.title}</div>
@@ -191,5 +237,18 @@ const PriceChartingPanel: React.FC<PriceChartingPanelProps> = ({
     </div>
   );
 };
+
+// Add CSS keyframes for spinner animation
+const spinnerStyle = document.createElement('style');
+spinnerStyle.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+if (!document.head.querySelector('style[data-spinner]')) {
+  spinnerStyle.setAttribute('data-spinner', 'true');
+  document.head.appendChild(spinnerStyle);
+}
 
 export default PriceChartingPanel;

@@ -33,6 +33,8 @@ class CalculatorSessionUpdate(BaseModel):
     source_id: Optional[int] = None
     status: Optional[str] = Field(None, pattern="^(draft|finalized|converted_to_po)$")
     asking_price: Optional[float] = Field(None, ge=0, description="Total asking price for the entire lot")
+    cashback_enabled: Optional[bool] = Field(None, description="Whether to include cashback in calculations")
+    tax_exempt: Optional[bool] = Field(None, description="Whether this session is tax exempt")
 
 class CalculatorSession(BaseModel):
     session_id: int
@@ -47,6 +49,8 @@ class CalculatorSession(BaseModel):
     status: str
     purchase_order_id: Optional[int] = None
     asking_price: Optional[float] = None
+    cashback_enabled: bool = True
+    tax_exempt: bool = True
     created_at: datetime
     updated_at: datetime
 

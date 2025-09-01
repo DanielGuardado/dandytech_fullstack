@@ -132,7 +132,7 @@ class PurchaseCalculatorService:
         print(f"DEBUG: Validated item: {validated_item}")
         
         # Perform calculations
-        calculated_item = self._calculate_item_pricing(validated_item)
+        calculated_item = self._calculate_item_pricing(validated_item, session)
         print(f"DEBUG: Calculated item: {calculated_item}")
         
         # Save all fields including detailed calculation breakdown
@@ -166,7 +166,7 @@ class PurchaseCalculatorService:
         if any(key in updates for key in ["override_price", "markup_amount", "target_profit_percentage"]):
             # Get current item data and apply updates
             current_data = {**item, **updates}
-            calculated_updates = self._calculate_item_pricing(current_data)
+            calculated_updates = self._calculate_item_pricing(current_data, session)
             updates.update(calculated_updates)
         
         updated_item = self.repo.update_item(item_id, updates)
@@ -209,7 +209,7 @@ class PurchaseCalculatorService:
         
         # Recalculate each item
         for item in items:
-            calculated_item = self._calculate_item_pricing(item)
+            calculated_item = self._calculate_item_pricing(item, session)
             self.repo.update_item(item["item_id"], calculated_item)
         
         # Update session totals
@@ -385,19 +385,19 @@ class PurchaseCalculatorService:
         print(f"DEBUG: enriched at end of validation: {enriched}")
         return enriched
 
-    def _calculate_item_pricing(self, item_data: Dict) -> Dict:
+    def _calculate_item_pricing(self, item_data: Dict, session_data: Dict = None) -> Dict:
         """Calculate all pricing fields for an item using eBay fee structure"""
         config = self.get_config()
         
         # Determine base price and source
         if item_data.get("override_price") is not None:
-            base_price = item_data["override_price"]
+            base_price = float(item_data["override_price"])
             if item_data.get("market_price"):
                 cost_source = "pricecharting_override"
             else:
                 cost_source = "manual"
         elif item_data.get("market_price") is not None:
-            base_price = item_data["market_price"]
+            base_price = float(item_data["market_price"])
             cost_source = "pricecharting"
         else:
             # No price available
@@ -422,14 +422,20 @@ class PurchaseCalculatorService:
                 "calculated_purchase_price": None
             }
         
-        final_base_price = base_price
-        markup_amount = item_data.get("markup_amount", 3.50)
-        deductions = item_data.get("deductions", 0.0) or 0.0
+        final_base_price = float(base_price)
+        markup_amount = float(item_data.get("markup_amount", 3.50))
+        deductions = float(item_data.get("deductions", 0.0) or 0.0)
         estimated_sale_price = final_base_price + markup_amount - deductions
         
         # Step 1: Calculate sales tax and final value (what buyer pays)
-        sales_tax_rate = float(config["sales_tax_avg"]["config_value"]) / 100
-        sales_tax = estimated_sale_price * sales_tax_rate
+        # Check session tax_exempt setting (default True = exempt from tax)
+        if session_data and not session_data.get("tax_exempt", True):
+            # Tax is applied (tax_exempt = False)
+            sales_tax_rate = float(config["sales_tax_avg"]["config_value"]) / 100
+            sales_tax = estimated_sale_price * sales_tax_rate
+        else:
+            # Tax exempt (tax_exempt = True or not specified)
+            sales_tax = 0.0
         final_value = estimated_sale_price + sales_tax
         
         # Determine if this is a game or console based on category or variant type
@@ -466,10 +472,17 @@ class PurchaseCalculatorService:
         total_fees = transaction_fee + ad_fee + shipping_cost + supplies_cost
         
         # Step 6: Calculate cashback (money back to us)
-        regular_cashback_rate = float(config["regular_cashback_rate"]["config_value"]) / 100
-        shipping_cashback_rate = float(config["shipping_cashback_rate"]["config_value"]) / 100
-        regular_cashback = estimated_sale_price * regular_cashback_rate
-        shipping_cashback = shipping_cost * shipping_cashback_rate
+        # Check session cashback_enabled setting (default True = enabled)
+        if session_data and not session_data.get("cashback_enabled", True):
+            # Cashback disabled
+            regular_cashback = 0.0
+            shipping_cashback = 0.0
+        else:
+            # Cashback enabled
+            regular_cashback_rate = float(config["regular_cashback_rate"]["config_value"]) / 100
+            shipping_cashback_rate = float(config["shipping_cashback_rate"]["config_value"]) / 100
+            regular_cashback = estimated_sale_price * regular_cashback_rate
+            shipping_cashback = shipping_cost * shipping_cashback_rate
         total_cashback = regular_cashback + shipping_cashback
         
         # Step 7: Net after fees (we collect tax but remit it, so it nets out)

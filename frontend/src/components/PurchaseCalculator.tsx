@@ -434,15 +434,157 @@ const PurchaseCalculator: React.FC = () => {
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '4px', textTransform: 'uppercase' }}>
                     Session Name
                   </label>
-                  <div style={{ 
-                    fontSize: '14px', 
-                    color: '#495057',
-                    background: '#f8f9fa',
-                    padding: '8px 10px',
-                    borderRadius: '4px',
-                    border: '1px solid #dee2e6'
-                  }}>
-                    {dynamicSessionData.session_name || 'Unnamed Session'}
+                  <input
+                    type="text"
+                    placeholder="Enter session name"
+                    value={sessionData?.session_name || ''}
+                    onChange={(e) => {
+                      setSessionData(prev => prev ? { ...prev, session_name: e.target.value } : prev);
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#007aff';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(0, 122, 255, 0.15)';
+                    }}
+                    onBlur={async (e) => {
+                      e.target.style.borderColor = '#dee2e6';
+                      e.target.style.boxShadow = 'none';
+                      
+                      if (sessionId) {
+                        try {
+                          await calculatorService.updateSession(sessionId, { session_name: e.target.value });
+                          setSessionData(prev => prev ? { ...prev, session_name: e.target.value } : prev);
+                        } catch (err) {
+                          setError(`Failed to update session name: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                        }
+                      }
+                    }}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') {
+                        if (sessionId) {
+                          try {
+                            await calculatorService.updateSession(sessionId, { session_name: (e.target as HTMLInputElement).value });
+                            setSessionData(prev => prev ? { ...prev, session_name: (e.target as HTMLInputElement).value } : prev);
+                            (e.target as HTMLInputElement).blur();
+                          } catch (err) {
+                            setError(`Failed to update session name: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                          }
+                        }
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                {/* Session Options */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#6c757d', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Session Options
+                  </label>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {/* Cashback Toggle */}
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      padding: '6px 10px',
+                      background: '#f8f9fa',
+                      borderRadius: '4px',
+                      border: '1px solid #dee2e6'
+                    }}>
+                      <span style={{ fontSize: '12px', color: '#495057' }}>
+                        💰 Include Cashback
+                      </span>
+                      <label style={{ 
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        gap: '4px'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={sessionData?.cashback_enabled ?? true}
+                          onChange={async (e) => {
+                            const newValue = e.target.checked;
+                            setSessionData(prev => prev ? { ...prev, cashback_enabled: newValue } : prev);
+                            
+                            if (sessionId) {
+                              try {
+                                await calculatorService.updateSession(sessionId, { cashback_enabled: newValue });
+                                // Trigger recalculation
+                                await calculatorService.recalculateSession(sessionId);
+                                const updatedSession = await calculatorService.getSession(sessionId);
+                                setSessionData(updatedSession);
+                                setItems(updatedSession.items);
+                              } catch (err) {
+                                setError(`Failed to update cashback setting: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                                // Revert on error
+                                setSessionData(prev => prev ? { ...prev, cashback_enabled: !newValue } : prev);
+                              }
+                            }
+                          }}
+                          style={{ margin: 0 }}
+                        />
+                        <span style={{ fontSize: '10px', color: '#6c757d' }}>
+                          {sessionData?.cashback_enabled ?? true ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Tax Exempt Toggle */}
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      padding: '6px 10px',
+                      background: '#f8f9fa',
+                      borderRadius: '4px',
+                      border: '1px solid #dee2e6'
+                    }}>
+                      <span style={{ fontSize: '12px', color: '#495057' }}>
+                        🏛️ Tax Exempt
+                      </span>
+                      <label style={{ 
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        gap: '4px'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={sessionData?.tax_exempt ?? true}
+                          onChange={async (e) => {
+                            const newValue = e.target.checked;
+                            setSessionData(prev => prev ? { ...prev, tax_exempt: newValue } : prev);
+                            
+                            if (sessionId) {
+                              try {
+                                await calculatorService.updateSession(sessionId, { tax_exempt: newValue });
+                                // Trigger recalculation
+                                await calculatorService.recalculateSession(sessionId);
+                                const updatedSession = await calculatorService.getSession(sessionId);
+                                setSessionData(updatedSession);
+                                setItems(updatedSession.items);
+                              } catch (err) {
+                                setError(`Failed to update tax exempt setting: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                                // Revert on error
+                                setSessionData(prev => prev ? { ...prev, tax_exempt: !newValue } : prev);
+                              }
+                            }
+                          }}
+                          style={{ margin: 0 }}
+                        />
+                        <span style={{ fontSize: '10px', color: '#6c757d' }}>
+                          {sessionData?.tax_exempt ?? true ? 'Exempt' : 'Taxable'}
+                        </span>
+                      </label>
+                    </div>
                   </div>
                 </div>
 

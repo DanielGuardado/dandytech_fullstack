@@ -11,6 +11,7 @@ interface CalculatorPricingPanelProps {
   onAddItem: (item: CalculatorItemCreate) => void;
   loading: boolean;
   manualIncludedMode?: 'default' | 'no_manual' | 'manual';
+  categoryName?: string;
 }
 
 const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
@@ -20,7 +21,8 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
   config,
   onAddItem,
   loading,
-  manualIncludedMode = 'default'
+  manualIncludedMode = 'default',
+  categoryName
 }) => {
   // Form state
   const [marketPrice, setMarketPrice] = useState<string>('');
@@ -134,20 +136,32 @@ const CalculatorPricingPanel: React.FC<CalculatorPricingPanelProps> = ({
     }
 
     // Set default shipping cost based on item type
-    // Determine if this is likely a console by checking the product title
-    const isConsole = productTitle.toLowerCase().includes('console') || 
-                     productTitle.toLowerCase().includes('system') ||
-                     /ps[2345]|xbox|switch|wii/i.test(productTitle);
+    // Use category information if available, otherwise fall back to title-based detection
+    let isConsole = false;
+    
+    if (categoryName) {
+      // Use category information - anything that's not a video game is likely a console/hardware
+      isConsole = categoryName !== 'Video Game';
+    } else {
+      // Fall back to more specific title-based detection
+      // Look for explicit console/system keywords, not just platform names
+      const titleLower = productTitle.toLowerCase();
+      isConsole = titleLower.includes('console') || 
+                  titleLower.includes('system') ||
+                  // Be more specific - require "console" or "system" after platform names
+                  /\b(ps[2345]|xbox|nintendo\s+switch|wii\s*u?)\s+(console|system)\b/i.test(productTitle) ||
+                  // Or standalone console names
+                  /\b(playstation|xbox\s+(?:one|series|360)|nintendo\s+switch)\b/i.test(productTitle);
+    }
     
     if (isConsole) {
       const defaultConsoleShipping = config.average_shipping_cost_consoles?.config_value || 12.00;
       setShippingCost(defaultConsoleShipping.toString());
-    } else if (selectedVariant.variant_type_code) {
-      // For video games, use game shipping cost
+    } else {
+      // Default to game shipping cost
       const defaultGameShipping = config.average_shipping_cost?.config_value || 4.40;
       setShippingCost(defaultGameShipping.toString());
     }
-    // For other items, leave shipping cost empty (user must enter)
 
     // Auto-focus market price field
     setTimeout(() => {

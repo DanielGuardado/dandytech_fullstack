@@ -200,3 +200,5 @@ This page exemplifies our design system principles:
 - `npm run build` - Production build  
 - `npm test` - Run tests
 - Proxy backend via: `http://localhost:8000` (already configured)
+
+all db files are in the C:\Users\Dan\Dropbox\dev\dandytech\backend\db\migrations folder to not run migration files for me i will run them, referance these files if you need to see what the database looks like and scan thorugh them all so you can see the changes

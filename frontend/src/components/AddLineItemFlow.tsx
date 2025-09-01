@@ -703,6 +703,7 @@ const AddLineItemFlow: React.FC<AddLineItemFlowProps> = ({
           onAddItem={handleCalculatorItemAdd}
           loading={isProcessing}
           manualIncludedMode={manualIncludedMode}
+          categoryName={selectedProduct ? categories.find(c => c.category_id === selectedProduct.category_id)?.name : newProductData ? categories.find(c => c.category_id === newProductData.category_id)?.name : undefined}
         />
       )}
 
